@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Not found — SmartLab</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="hero" style="min-height:100vh;">
+    <div class="hero-inner">
+      <div class="brand-logo-plain" style="display:flex; justify-content:center; margin-bottom:28px;">
+        <img src="{{ url_for('static', filename='img/logo_full.png') }}" alt="SmartLab" style="height:44px; width:auto;">
+      </div>
+      <div class="hero-eyebrow">404</div>
+      <h1>Page not found</h1>
+      <p class="lead">The computer or page you're looking for doesn't exist, or the QR code may be out of date.</p>
+      <div class="cta-row"><a href="{{ url_for('landing') }}" class="btn btn-primary">Go home</a></div>
+    </div>
+  </div>
+</body>
+</html>

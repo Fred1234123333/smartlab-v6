@@ -1,0 +1,255 @@
+{% extends "base_admin.html" %}
+{% from "_icons.html" import icon %}
+{% from "_badges.html" import status_badge, status_card_class %}
+{% set active = 'computers' %}
+{% block title %}Computers{% endblock %}
+{% block page_title %}Computers{% endblock %}
+
+{% block content %}
+
+<div class="toolbar" style="flex-wrap:wrap; gap:10px;">
+  <div class="filter-pills" id="status-pills">
+    {% for opt in status_options %}
+      <button type="button" class="pill {% if status_filter == opt %}active{% endif %}" data-status-filter="{{ opt }}">{{ opt }}</button>
+    {% endfor %}
+  </div>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <select class="form-control" id="lab-filter" style="width:auto; min-width:180px;">
+      <option value="All" {% if lab_filter == 'All' %}selected{% endif %}>All Laboratories</option>
+      {% for lab in laboratories %}
+        <option value="{{ lab['id'] }}" {% if lab_filter == lab['id']|string %}selected{% endif %}>{{ lab['name'] }}</option>
+      {% endfor %}
+    </select>
+    <div class="search-box">
+      {{ icon('search') }}
+      <input type="text" id="computer-search" placeholder="Search by ID, number, or lab" value="{{ search }}">
+    </div>
+    <a href="{{ url_for('add_computer') }}" class="btn btn-primary">{{ icon('plus') }} Add computer</a>
+  </div>
+</div>
+
+{% if has_computers %}
+{% for group in groups %}
+  <section class="lab-group" data-lab-id="{{ group.lab['id'] if group.lab else 'unassigned' }}" style="margin-bottom:26px;">
+    <div class="panel" style="margin-bottom:14px; padding:16px 20px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h3 style="margin:0 0 2px;">
+            {% if group.lab %}
+              <a href="{{ url_for('laboratory_detail', lab_id=group.lab['id']) }}">{{ group.lab['name'] }}</a>
+              {%- if group.lab['code'] %} <span style="font-weight:400; color:var(--text-muted); font-size:13px;">({{ group.lab['code'] }})</span>{% endif %}
+            {% else %}
+              Unassigned
+            {% endif %}
+          </h3>
+          {% if group.lab %}
+          <div style="font-size:12.5px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            <span style="display:inline-flex; width:13px; height:13px; flex-shrink:0;">{{ icon('building') }}</span>
+            {%- if group.lab['building'] or group.lab['floor'] or group.lab['room'] -%}
+              {{ [group.lab['building'], group.lab['floor'], group.lab['room']] | select | join(' \u2022 ') }}
+            {%- elif group.lab['location'] -%}
+              {{ group.lab['location'] }}
+            {%- else -%}
+              No physical location set
+            {%- endif %}
+          </div>
+          {% else %}
+          <div style="font-size:12.5px; color:var(--text-muted);">Computers whose laboratory was removed - still tracked, just not linked to a room.</div>
+          {% endif %}
+        </div>
+        <div style="display:flex; gap:16px; font-size:12.5px; text-align:center;">
+          <div><strong style="font-size:17px; display:block; color:var(--text);">{{ group.stats.total }}</strong>Total</div>
+          <div><strong style="font-size:17px; display:block; color:var(--green);">{{ group.stats.working }}</strong>Working</div>
+          <div><strong style="font-size:17px; display:block; color:var(--orange);">{{ group.stats.under_repair }}</strong>Repair</div>
+          <div><strong style="font-size:17px; display:block; color:var(--red);">{{ group.stats.offline }}</strong>Offline</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="computer-grid lab-group-grid">
+      {% for row in group.computers %}
+        <div class="computer-card {{ status_card_class(row['status']) }}"
+             data-status="{{ row['status'] }}"
+             data-lab-id="{{ group.lab['id'] if group.lab else 'unassigned' }}"
+             data-search="{{ (row['computer_id'] ~ ' ' ~ row['lab'] ~ ' ' ~ row['number'])|lower }}"
+             data-computer-id="{{ row['computer_id'] }}"
+             data-lab="{{ row['lab'] }}"
+             data-number="{{ row['number'] }}"
+             data-qr-src="{{ url_for('static', filename=row['qr_path']) }}"
+             data-public-url="{{ url_for('public_status', computer_id=row['computer_id'], _external=True) }}">
+          <div class="cc-head">
+            <div>
+              <div class="cc-id">{{ row['computer_id'] }}</div>
+              <div class="cc-lab">{{ row['lab'] }}</div>
+              <div class="cc-number">Workstation {{ row['number'] }}</div>
+            </div>
+            <span class="cc-badge-slot">{{ status_badge(row['status']) }}</span>
+          </div>
+
+          <div class="cc-qr">
+            <img src="{{ url_for('static', filename=row['qr_path']) }}" alt="QR code for {{ row['computer_id'] }}">
+          </div>
+
+          <div class="cc-reports">
+            {% set oc = open_counts.get(row['computer_id'], 0) %}
+            {% if oc > 0 %}<strong>{{ oc }} open report{{ 's' if oc != 1 }}</strong>{% else %}No open reports{% endif %}
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px;">
+            <select class="form-control status-select-inline quick-status-select" data-computer-id="{{ row['computer_id'] }}">
+              {% for opt in status_options[1:] %}
+                <option value="{{ opt }}" {% if opt == row['status'] %}selected{% endif %}>{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="cc-actions">
+            <a class="btn btn-outline btn-sm" href="{{ url_for('computer_detail', computer_id=row['computer_id']) }}">View details</a>
+            <button type="button" class="btn btn-outline btn-sm qr-modal-trigger" data-tooltip="QR Code Management">{{ icon('qr') }} View QR</button>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endfor %}
+<div class="empty-state" id="no-results-state" style="display:none;">
+  {{ icon('empty') }}
+  <h3>No computers match</h3>
+  <p>Try a different filter or search term.</p>
+</div>
+{% else %}
+<div class="empty-state">
+  {{ icon('empty') }}
+  <h3>No computers yet</h3>
+  <p>Add your first laboratory computer to begin monitoring.</p>
+  <a href="{{ url_for('add_computer') }}" class="btn btn-primary" style="margin-top:12px;">{{ icon('plus') }} Add Computer</a>
+</div>
+{% endif %}
+
+<!-- QR modal (shared by every card - populated from the clicked card's data attributes) -->
+<div class="modal-overlay" id="qr-modal">
+  <div class="modal-box" style="position:relative;">
+    <button class="modal-close-x" id="qr-modal-close" aria-label="Close">&times;</button>
+    <h3 id="qr-modal-id">PC-000</h3>
+    <div class="modal-sub" id="qr-modal-lab">Laboratory</div>
+    <img id="qr-modal-img" src="" alt="QR code">
+    <div class="modal-sub" style="word-break:break-all;" id="qr-modal-url"></div>
+    <div class="modal-actions">
+      <a class="btn btn-outline" id="qr-modal-download" download>Download</a>
+      <button class="btn btn-primary" id="qr-modal-print" type="button">Print</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var sections = Array.prototype.slice.call(document.querySelectorAll(".lab-group"));
+  if (!sections.length) return;
+  var cards = Array.prototype.slice.call(document.querySelectorAll(".computer-card"));
+  var pills = document.querySelectorAll("[data-status-filter]");
+  var searchInput = document.getElementById("computer-search");
+  var labFilter = document.getElementById("lab-filter");
+  var noResults = document.getElementById("no-results-state");
+  var currentStatus = "{{ status_filter }}";
+
+  function applyFilters() {
+    var term = (searchInput.value || "").toLowerCase().trim();
+    var currentLab = labFilter.value;
+    var visibleCount = 0;
+    cards.forEach(function (card) {
+      var matchesStatus = currentStatus === "All" || card.getAttribute("data-status") === currentStatus;
+      var matchesSearch = !term || card.getAttribute("data-search").indexOf(term) !== -1;
+      var matchesLab = currentLab === "All" || card.getAttribute("data-lab-id") === currentLab;
+      var show = matchesStatus && matchesSearch && matchesLab;
+      card.classList.toggle("cc-hidden", !show);
+      if (show) visibleCount++;
+    });
+    // Hide a whole lab section once none of its cards are visible, so the
+    // page never shows an empty header with nothing underneath it.
+    sections.forEach(function (section) {
+      var visibleInSection = section.querySelectorAll(".computer-card:not(.cc-hidden)").length;
+      section.style.display = visibleInSection === 0 ? "none" : "";
+    });
+    if (noResults) noResults.style.display = visibleCount === 0 ? "block" : "none";
+  }
+
+  pills.forEach(function (pill) {
+    pill.addEventListener("click", function () {
+      pills.forEach(function (p) { p.classList.remove("active"); });
+      pill.classList.add("active");
+      currentStatus = pill.getAttribute("data-status-filter");
+      applyFilters();
+    });
+  });
+
+  if (searchInput) searchInput.addEventListener("input", applyFilters);
+  if (labFilter) labFilter.addEventListener("change", applyFilters);
+
+  applyFilters();
+
+  // ---- Inline quick status change (AJAX, no reload) ----
+  document.querySelectorAll(".quick-status-select").forEach(function (select) {
+    var originalValue = select.value;
+    select.addEventListener("change", function () {
+      var computerId = select.getAttribute("data-computer-id");
+      var newStatus = select.value;
+      fetch("/api/computers/" + encodeURIComponent(computerId) + "/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": window.smartlabCsrfToken ? window.smartlabCsrfToken() : "" },
+        body: JSON.stringify({ status: newStatus }),
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!data.success) { smartlabToast(data.error || "Unable to update status.", "error"); select.value = originalValue; return; }
+          var card = select.closest(".computer-card");
+          card.setAttribute("data-status", newStatus);
+          card.className = card.className.replace(/status-(working|repair|offline)/, "");
+          var cls = newStatus === "Working" ? "status-working" : (newStatus === "Under Repair" ? "status-repair" : "status-offline");
+          card.classList.add(cls);
+          var badgeSlot = card.querySelector(".cc-badge-slot");
+          var badgeClass = newStatus === "Working" ? "badge-working" : (newStatus === "Under Repair" ? "badge-repair" : "badge-offline");
+          badgeSlot.innerHTML = '<span class="badge ' + badgeClass + '">' + newStatus + "</span>";
+          originalValue = newStatus;
+          smartlabToast(computerId + " status updated to " + newStatus + ".", "success");
+          applyFilters();
+        })
+        .catch(function () { smartlabToast("Network error updating status.", "error"); select.value = originalValue; });
+    });
+  });
+
+  // ---- QR modal ----
+  var modal = document.getElementById("qr-modal");
+  var modalImg = document.getElementById("qr-modal-img");
+  var modalId = document.getElementById("qr-modal-id");
+  var modalLab = document.getElementById("qr-modal-lab");
+  var modalUrl = document.getElementById("qr-modal-url");
+  var modalDownload = document.getElementById("qr-modal-download");
+
+  document.querySelectorAll(".qr-modal-trigger").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var card = btn.closest(".computer-card");
+      modalId.textContent = card.getAttribute("data-computer-id");
+      modalLab.textContent = card.getAttribute("data-lab") + " · Workstation " + card.getAttribute("data-number");
+      modalImg.src = card.getAttribute("data-qr-src");
+      modalUrl.textContent = card.getAttribute("data-public-url");
+      modalDownload.href = card.getAttribute("data-qr-src");
+      modalDownload.setAttribute("download", card.getAttribute("data-computer-id") + ".png");
+      modal.classList.add("open");
+    });
+  });
+  document.getElementById("qr-modal-close").addEventListener("click", function () { modal.classList.remove("open"); });
+  modal.addEventListener("click", function (e) { if (e.target === modal) modal.classList.remove("open"); });
+  document.getElementById("qr-modal-print").addEventListener("click", function () {
+    var w = window.open("", "_blank");
+    w.document.write('<html><head><title>Print QR - ' + modalId.textContent + '</title></head><body style="text-align:center; font-family:Arial;">' +
+      '<h2>' + modalId.textContent + '</h2><p>' + modalLab.textContent + '</p>' +
+      '<img src="' + modalImg.src + '" style="width:260px;height:260px;">' +
+      '<script>window.onload=function(){window.print();}<\/script></body></html>');
+    w.document.close();
+  });
+})();
+</script>
+{% endblock %}

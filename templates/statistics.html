@@ -1,0 +1,174 @@
+{% extends "base_admin.html" %}
+{% set active = 'statistics' %}
+{% block title %}Statistics{% endblock %}
+{% block page_title %}Statistics{% endblock %}
+
+{% block content %}
+
+<h3 style="margin: 0 0 12px;">Overall SmartLab Statistics</h3>
+<div class="grid grid-5" style="margin-bottom:18px;">
+  <div class="stat-card accent-blue"><div class="stat-label">Total laboratories</div><div class="stat-value">{{ total_laboratories }}</div></div>
+  <div class="stat-card accent-blue"><div class="stat-label">Total computers</div><div class="stat-value">{{ stats.total }}</div></div>
+  <div class="stat-card accent-blue"><div class="stat-label">System health</div><div class="stat-value">{{ stats.health }}%</div></div>
+  <div class="stat-card accent-orange"><div class="stat-label">Open reports</div><div class="stat-value">{{ stats.open_reports }}</div></div>
+  <div class="stat-card accent-green"><div class="stat-label">Resolved reports</div><div class="stat-value">{{ stats.resolved_reports }}</div></div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom:18px;">
+  <div class="panel chart-card">
+    <h3>Computer status distribution</h3>
+    <canvas id="statusChart" height="220" role="img" aria-label="Computer status distribution chart"></canvas>
+  </div>
+
+  <div class="panel chart-card">
+    <h3>Most common reported problems</h3>
+    {% if issue_counts %}
+      <canvas id="issueChart" height="220" role="img" aria-label="Reported problems chart"></canvas>
+    {% else %}
+      <p style="color:var(--text-muted); font-size:13px;">No reports have been filed yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel chart-card" style="margin-bottom:28px;">
+  <h3>Open vs Resolved reports</h3>
+  <canvas id="reportsChart" height="140" role="img" aria-label="Open versus resolved reports chart"></canvas>
+</div>
+
+<h3 style="margin: 0 0 12px;">Individual Laboratory Statistics</h3>
+{% if lab_stats %}
+  {% for ls in lab_stats %}
+  <div class="panel" style="margin-bottom: 18px;">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+      <div>
+        <h3 style="margin:0 0 2px;">
+          <a href="{{ url_for('laboratory_detail', lab_id=ls.lab['id']) }}">{{ ls.lab['name'] }}</a>
+          {%- if ls.lab['code'] %} <span style="font-weight:400; color:var(--text-muted); font-size:13px;">({{ ls.lab['code'] }})</span>{% endif %}
+        </h3>
+        <div style="font-size:12.5px; color:var(--text-muted);">
+          {%- if ls.lab['building'] or ls.lab['floor'] or ls.lab['room'] -%}
+            {{ [ls.lab['building'], ls.lab['floor'], ls.lab['room']] | select | join(' \u2022 ') }}
+          {%- elif ls.lab['location'] -%}
+            {{ ls.lab['location'] }}
+          {%- else -%}
+            No physical location set
+          {%- endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-5" style="margin-bottom: 14px;">
+      <div class="stat-card accent-blue"><div class="stat-label">Total computers</div><div class="stat-value">{{ ls.computers.total }}</div></div>
+      <div class="stat-card accent-green"><div class="stat-label">Working</div><div class="stat-value">{{ ls.computers.working }}</div></div>
+      <div class="stat-card accent-orange"><div class="stat-label">Under repair</div><div class="stat-value">{{ ls.computers.under_repair }}</div></div>
+      <div class="stat-card accent-red"><div class="stat-label">Offline</div><div class="stat-value">{{ ls.computers.offline }}</div></div>
+      <div class="stat-card accent-blue"><div class="stat-label">System health</div><div class="stat-value">{{ ls.health }}%</div></div>
+    </div>
+
+    <div class="grid grid-2">
+      <div style="display:flex; gap:14px;">
+        <div class="stat-card accent-orange" style="flex:1;"><div class="stat-label">Open reports</div><div class="stat-value">{{ ls.open_reports }}</div></div>
+        <div class="stat-card accent-green" style="flex:1;"><div class="stat-label">Resolved reports</div><div class="stat-value">{{ ls.resolved_reports }}</div></div>
+      </div>
+      <div>
+        {% if ls.issue_counts %}
+        <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:6px;">Most common problems</div>
+        {% for ic in ls.issue_counts %}
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
+          <div style="width:90px; font-size:12px; color:var(--text); flex-shrink:0;">{{ ic['issue_type'] }}</div>
+          <div style="flex:1; background:var(--surface); border-radius:4px; height:8px; overflow:hidden;">
+            <div style="width:{{ (ic['total'] / ls.max_issue * 100)|round }}%; background:var(--accent); height:100%;"></div>
+          </div>
+          <div style="width:18px; font-size:11px; color:var(--text-muted); text-align:right;">{{ ic['total'] }}</div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div style="font-size:12.5px; color:var(--text-muted);">No reports filed for this laboratory yet.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+<div class="panel empty-state">
+  <p>No laboratories yet — add one to see its own statistics here.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+<script>
+(function () {
+  var statusColors = { Working: "#16A34A", "Under Repair": "#F59E0B", Offline: "#DC2626" };
+
+  new Chart(document.getElementById("statusChart"), {
+    type: "doughnut",
+    data: {
+      labels: ["Working", "Under Repair", "Offline"],
+      datasets: [{
+        data: [{{ stats.working }}, {{ stats.under_repair }}, {{ stats.offline }}],
+        backgroundColor: [statusColors.Working, statusColors["Under Repair"], statusColors.Offline],
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 12 } } },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0) || 1;
+              var pct = Math.round((ctx.parsed / total) * 100);
+              return ctx.label + ": " + ctx.parsed + " (" + pct + "%)";
+            }
+          }
+        }
+      },
+      cutout: "68%",
+      animation: { duration: 500 },
+    }
+  });
+
+  var issueCanvas = document.getElementById("issueChart");
+  if (issueCanvas) {
+    new Chart(issueCanvas, {
+      type: "bar",
+      data: {
+        labels: {{ issue_counts | map(attribute='issue_type') | list | tojson }},
+        datasets: [{
+          data: {{ issue_counts | map(attribute='total') | list | tojson }},
+          backgroundColor: "#1D8A3E",
+          borderRadius: 6,
+          maxBarThickness: 28,
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+        animation: { duration: 500 },
+      }
+    });
+  }
+
+  new Chart(document.getElementById("reportsChart"), {
+    type: "bar",
+    data: {
+      labels: ["Reports"],
+      datasets: [
+        { label: "Open", data: [{{ stats.open_reports }}], backgroundColor: "#F59E0B", borderRadius: 6, maxBarThickness: 40 },
+        { label: "Resolved", data: [{{ stats.resolved_reports }}], backgroundColor: "#16A34A", borderRadius: 6, maxBarThickness: 40 },
+      ]
+    },
+    options: {
+      indexAxis: "y",
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 12 } } } },
+      scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { stacked: false } },
+      animation: { duration: 500 },
+    }
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base_admin.html" %}
+{% from "_icons.html" import icon %}
+{% set active = 'laboratories' %}
+{% block title %}Laboratories{% endblock %}
+{% block page_title %}Laboratories{% endblock %}
+
+{% block content %}
+
+<div class="toolbar" style="justify-content: flex-end; margin-bottom: 18px;">
+  <a href="{{ url_for('settings', tab='laboratory') }}" class="btn btn-primary">{{ icon('building') }} Add Laboratory</a>
+</div>
+
+{% if laboratories %}
+<div class="computer-grid">
+  {% for lab in laboratories %}
+    {% set stats = lab_stats.get(lab['id'], {}) %}
+    <a class="panel lab-card" href="{{ url_for('laboratory_detail', lab_id=lab['id']) }}" style="display:block; text-decoration:none; color:inherit;">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:10px;">
+        <div>
+          <h3 style="margin:0 0 2px;">{{ lab['name'] }}</h3>
+          {% if lab['code'] %}<div style="font-size:12px; color:var(--text-muted);">{{ lab['code'] }}</div>{% endif %}
+        </div>
+        {% if lab['status'] %}<span class="badge {{ 'badge-working' if lab['status'] == 'Active' else 'badge-offline' }}">{{ lab['status'] }}</span>{% endif %}
+      </div>
+      {% if lab['building'] or lab['floor'] or lab['room'] or lab['location'] %}
+      <div style="font-size:13px; color:var(--text-muted); margin-bottom:14px; display:flex; align-items:center; gap:6px;">
+        <span style="display:inline-flex; width:14px; height:14px; flex-shrink:0;">{{ icon('building') }}</span>
+        {%- if lab['building'] or lab['floor'] or lab['room'] -%}
+          {{ [lab['building'], lab['floor'], lab['room']] | select | join(' \u2022 ') }}
+        {%- else -%}
+          {{ lab['location'] }}
+        {%- endif %}
+      </div>
+      {% endif %}
+      <div style="display:flex; gap:18px; font-size:13px;">
+        <div><strong style="font-size:20px; display:block; color:var(--text);">{{ stats.get('total', 0) }}</strong>Computers</div>
+        <div><strong style="font-size:20px; display:block; color:var(--green);">{{ stats.get('working', 0) }}</strong>Working</div>
+        <div><strong style="font-size:20px; display:block; color:var(--orange);">{{ stats.get('under_repair', 0) }}</strong>Under Repair</div>
+        <div><strong style="font-size:20px; display:block; color:var(--red);">{{ stats.get('offline', 0) }}</strong>Offline</div>
+      </div>
+    </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="panel empty-state">
+  <p>No laboratories yet. Add your first physical laboratory to start registering its computers.</p>
+  <a href="{{ url_for('settings', tab='laboratory') }}" class="btn btn-primary">{{ icon('building') }} Add Laboratory</a>
+</div>
+{% endif %}
+
+{% endblock %}

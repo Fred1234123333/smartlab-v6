@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ app_settings.get('theme', 'dark') if app_settings else 'dark' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}Dashboard{% endblock %} — SmartLab</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script>
+    // Resolve "system" before first paint, and respect a same-session quick-toggle
+    // override, so there's no flash of the wrong theme on load.
+    (function () {
+      var stored = localStorage.getItem("smartlab-theme-override");
+      var serverTheme = document.documentElement.getAttribute("data-theme");
+      var effective = stored || serverTheme;
+      if (effective === "system") {
+        effective = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      }
+      document.documentElement.setAttribute("data-theme", effective);
+    })();
+  </script>
+</head>
+<body data-logged-in="true" data-notif-new-report="{{ app_settings.notif_new_report if app_settings else 'on' }}">
+{% from "_icons.html" import icon %}
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <img src="{{ url_for('static', filename='img/sfxc_logo_header.png') }}" alt="Saint Francis Xavier College" class="sfxc-crest">
+      <span class="brand-logo-chip"><img src="{{ url_for('static', filename='img/logo_full.png') }}" alt="SmartLab"></span>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="sidebar-link {% if active == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">{{ icon('dashboard') }} Dashboard</a>
+      <a class="sidebar-link {% if active == 'computers' %}active{% endif %}" href="{{ url_for('computers_list') }}">{{ icon('computer') }} Computers</a>
+      <a class="sidebar-link {% if active == 'laboratories' %}active{% endif %}" href="{{ url_for('laboratories_list') }}">{{ icon('building') }} Laboratories</a>
+      <a class="sidebar-link {% if active == 'scan' %}active{% endif %}" href="{{ url_for('scan_qr_page') }}">{{ icon('scan') }} Scan QR</a>
+      <a class="sidebar-link {% if active == 'reports' %}active{% endif %}" href="{{ url_for('reports_list') }}">{{ icon('reports') }} Reports</a>
+      <a class="sidebar-link {% if active == 'statistics' %}active{% endif %}" href="{{ url_for('statistics') }}">{{ icon('chart') }} Statistics</a>
+      <a class="sidebar-link {% if active == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}">{{ icon('settings') }} Settings</a>
+    </nav>
+    <div class="sidebar-foot">
+      <a class="sidebar-link" href="{{ url_for('logout') }}">{{ icon('logout') }} Logout</a>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <button class="menu-toggle" aria-label="Toggle navigation">{{ icon('menu') }}</button>
+        <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+      </div>
+      <div class="topbar-actions">
+        <button id="theme-toggle-btn" class="theme-toggle-btn" type="button" aria-label="Toggle light/dark mode" data-tooltip="Switch appearance">
+          <span class="theme-icon-dark">{{ icon('moon') }}</span>
+          <span class="theme-icon-light">{{ icon('sun') }}</span>
+        </button>
+        <div class="bell" role="button" aria-label="Notifications" data-tooltip="Open Reports">
+          {{ icon('bell') }}
+          {% if nav_open_count %}<span class="bell-badge">{{ nav_open_count }}</span>{% endif %}
+        </div>
+        <div class="bell-dropdown">
+          <h4>Open reports</h4>
+          {% if nav_recent_reports %}
+            {% for r in nav_recent_reports %}
+              <a class="bell-item" href="{{ url_for('computer_detail', computer_id=r['computer_id']) }}">
+                <div class="bi-issue">{{ r['computer_id'] }} — {{ r['issue_type'] }}</div>
+                <div class="bi-meta">{{ r['lab'] }} · {{ r['date_reported'] }}</div>
+              </a>
+            {% endfor %}
+          {% else %}
+            <div class="bell-empty">No open reports right now.</div>
+          {% endif %}
+        </div>
+        <div class="avatar-chip">
+          <span class="avatar-circle">{{ session.username[0]|upper }}</span>
+          <span>{{ session.username }}</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/live.js') }}"></script>
+<script src="{{ url_for('static', filename='js/forms.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

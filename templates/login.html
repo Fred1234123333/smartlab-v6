@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ app_settings.get('theme', 'dark') if app_settings else 'dark' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Admin Login — SmartLab</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script>
+    // Resolve "system" before first paint, and respect a same-session quick-toggle
+    // override, so there's no flash of the wrong theme on load.
+    (function () {
+      var stored = localStorage.getItem("smartlab-theme-override");
+      var serverTheme = document.documentElement.getAttribute("data-theme");
+      var effective = stored || serverTheme;
+      if (effective === "system") {
+        effective = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      }
+      document.documentElement.setAttribute("data-theme", effective);
+    })();
+  </script>
+</head>
+<body>
+{% from "_icons.html" import icon %}
+{% include "_splash.html" %}
+<div class="login-wrap">
+  <div class="login-stage">
+
+    <div class="login-photo">
+      <img src="{{ url_for('static', filename='img/login_hero.jpg') }}" alt="A SmartLab-monitored computer laboratory">
+      <div class="login-photo-scrim"></div>
+      <div class="login-photo-top">
+        <span class="login-live-badge"><span class="login-live-dot"></span>Live monitoring</span>
+      </div>
+      <div class="login-photo-bottom">
+        <div class="login-photo-avatar">{{ icon('computer') }}</div>
+        <div>
+          <div class="login-photo-name">Saint Francis Xavier College</div>
+          <div class="login-photo-role">Computer Laboratory</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-card">
+      <div class="login-card-top">
+        <div class="auth-brand brand-logo-plain">
+          <img src="{{ url_for('static', filename='img/sfxc_logo_header.png') }}" alt="Saint Francis Xavier College" class="sfxc-crest">
+          <img src="{{ url_for('static', filename='img/logo_full.png') }}" alt="SmartLab">
+        </div>
+        <button id="theme-toggle-btn" class="theme-toggle-btn" type="button" aria-label="Toggle light/dark mode" data-tooltip="Switch appearance">
+          <span class="theme-icon-dark">{{ icon('moon') }}</span>
+          <span class="theme-icon-light">{{ icon('sun') }}</span>
+        </button>
+      </div>
+
+      <h1 class="login-heading">Admin sign in</h1>
+      <div class="auth-sub login-sub">Computer Laboratory Monitoring System</div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="post" data-smartlab-validate>
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input class="form-control" type="text" id="username" name="username" required autofocus>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input class="form-control" type="password" id="password" name="password" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" data-done-btn data-busy-text="Signing in…">Sign in</button>
+      </form>
+
+      <div class="login-qr-note">
+        Checking a single computer instead? Scan its QR code — no login needed.
+      </div>
+    </div>
+
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/forms.js') }}"></script>
+</body>
+</html>

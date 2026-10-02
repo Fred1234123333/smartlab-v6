@@ -1,0 +1,557 @@
+{% extends "base_admin.html" %}
+{% from "_icons.html" import icon %}
+{% set active = 'settings' %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<p style="color:var(--text-muted); font-size:13.5px; margin-top:-10px; margin-bottom:22px;">
+  Manage your SmartLab system, account, laboratory configuration, and preferences.
+</p>
+
+<div class="settings-layout">
+  <nav class="settings-nav">
+    <a href="{{ url_for('settings', tab='general') }}" class="{{ 'active' if active_tab == 'general' }}">General</a>
+    <a href="{{ url_for('settings', tab='account') }}" class="{{ 'active' if active_tab == 'account' }}">Account</a>
+    <a href="{{ url_for('settings', tab='laboratory') }}" class="{{ 'active' if active_tab == 'laboratory' }}">Laboratory</a>
+    <a href="{{ url_for('settings', tab='appearance') }}" class="{{ 'active' if active_tab == 'appearance' }}">Appearance</a>
+    <a href="{{ url_for('settings', tab='qr') }}" class="{{ 'active' if active_tab == 'qr' }}">QR Codes</a>
+    <a href="{{ url_for('settings', tab='security') }}" class="{{ 'active' if active_tab == 'security' }}">Security</a>
+    <a href="{{ url_for('settings', tab='system') }}" class="{{ 'active' if active_tab == 'system' }}">System</a>
+    <a href="{{ url_for('settings', tab='notifications') }}" class="{{ 'active' if active_tab == 'notifications' }}">Notifications</a>
+    <a href="{{ url_for('settings', tab='about') }}" class="{{ 'active' if active_tab == 'about' }}">About</a>
+    <a href="{{ url_for('settings', tab='danger') }}" class="danger-link {{ 'active' if active_tab == 'danger' }}">Danger Zone</a>
+  </nav>
+
+  <div class="settings-content">
+
+    {# ================= GENERAL ================= #}
+    {% if active_tab == 'general' %}
+    <div class="settings-card">
+      <h2>General Settings</h2>
+      <p class="card-sub">Basic identity of your SmartLab installation.</p>
+      <form method="post" action="{{ url_for('settings_general') }}" data-smartlab-validate>
+        <div class="form-group">
+          <label for="system_name">System Name<span class="required-mark">*</span></label>
+          <input class="form-control" type="text" id="system_name" name="system_name" value="{{ s.system_name }}" required>
+        </div>
+        <div class="form-group">
+          <label for="system_description">System Description</label>
+          <input class="form-control" type="text" id="system_description" name="system_description" value="{{ s.system_description }}">
+        </div>
+        <div class="form-group">
+          <label for="admin_email">Administrator Email</label>
+          <input class="form-control" type="email" id="admin_email" name="admin_email" value="{{ s.admin_email }}" placeholder="admin@example.com">
+        </div>
+        <div class="form-group">
+          <label for="default_lab">Default Laboratory</label>
+          <select class="form-control" id="default_lab" name="default_lab">
+            <option value="">No default</option>
+            {% for lab in labs %}
+              <option value="{{ lab.name }}" {% if lab.name == s.default_lab %}selected{% endif %}>{{ lab.name }}</option>
+            {% endfor %}
+          </select>
+          <div class="hint">Used to pre-fill the laboratory field when adding a new computer.</div>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-text">
+            <div class="toggle-title">Allow Anonymous Reports</div>
+            <div class="toggle-desc">If off, students must enter their name to submit a problem report.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" name="allow_anonymous_reports" {% if s.allow_anonymous_reports == 'on' %}checked{% endif %}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top:18px;" data-done-btn data-busy-text="Saving…">Save changes</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {# ================= ACCOUNT ================= #}
+    {% if active_tab == 'account' %}
+    <div class="settings-card">
+      <h2>Profile</h2>
+      <div class="info-list">
+        <div class="info-row"><span class="info-label">Username</span><span class="info-value">{{ session.username }}</span></div>
+        <div class="info-row"><span class="info-label">Role</span><span class="info-value">Administrator</span></div>
+      </div>
+      <a href="{{ url_for('logout') }}" class="btn btn-outline" style="margin-top:16px;">{{ icon('logout') }} Logout</a>
+    </div>
+
+    <div class="settings-card">
+      <h2>Change Username</h2>
+      <form method="post" action="{{ url_for('settings_change_username') }}" data-smartlab-validate>
+        <div class="form-group">
+          <label for="new_username">New username<span class="required-mark">*</span></label>
+          <input class="form-control" type="text" id="new_username" name="new_username" required>
+        </div>
+        <div class="form-group">
+          <label for="current_password_for_username">Confirm with current password<span class="required-mark">*</span></label>
+          <input class="form-control" type="password" id="current_password_for_username" name="current_password_for_username" required>
+        </div>
+        <button type="submit" class="btn btn-primary" data-done-btn data-busy-text="Updating…">Update username</button>
+      </form>
+    </div>
+
+    <div class="settings-card">
+      <h2>Change Password</h2>
+      <form method="post" action="{{ url_for('settings_change_password') }}" data-smartlab-validate id="password-form">
+        <div class="form-group">
+          <label for="current_password">Current password<span class="required-mark">*</span></label>
+          <input class="form-control" type="password" id="current_password" name="current_password" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="new_password">New password<span class="required-mark">*</span></label>
+            <input class="form-control" type="password" id="new_password" name="new_password" required minlength="6">
+          </div>
+          <div class="form-group">
+            <label for="confirm_password">Confirm new password<span class="required-mark">*</span></label>
+            <input class="form-control" type="password" id="confirm_password" name="confirm_password" required minlength="6">
+          </div>
+        </div>
+        <div class="hint" style="margin-bottom:14px;">At least 6 characters. Your password is never shown or stored as plain text.</div>
+        <button type="submit" class="btn btn-primary" data-done-btn data-busy-text="Updating…">Update password</button>
+      </form>
+      <script>
+        (function () {
+          var newPw = document.getElementById("new_password");
+          var confirmPw = document.getElementById("confirm_password");
+          function checkMatch() {
+            confirmPw.setCustomValidity(confirmPw.value && confirmPw.value !== newPw.value ? "Passwords don't match" : "");
+          }
+          newPw.addEventListener("input", checkMatch);
+          confirmPw.addEventListener("input", checkMatch);
+        })();
+      </script>
+    </div>
+    {% endif %}
+
+    {# ================= LABORATORY ================= #}
+    {% if active_tab == 'laboratory' %}
+    <div class="settings-card">
+      <h2>Laboratory Configuration</h2>
+      <p class="card-sub">Each laboratory here is a real physical room — every computer registered under it is linked to this record, and its location shows up on that computer's profile, on reports, and on the printable report log.</p>
+
+      {% if labs %}
+      <div class="info-list" style="margin-bottom:20px;">
+        {% for lab in labs %}
+        <div class="lab-item">
+          <div>
+            <div class="lab-name"><a href="{{ url_for('laboratory_detail', lab_id=lab.id) }}">{{ lab.name }}</a>{% if lab.code %} <span style="color:var(--text-muted); font-weight:400;">({{ lab.code }})</span>{% endif %}</div>
+            <div class="lab-meta">
+              {%- if lab.building or lab.floor or lab.room -%}
+                {{ [lab.building, lab.floor, lab.room] | select | join(' \u2022 ') }}
+              {%- else -%}
+                {{ lab.location or "No physical location set" }}
+              {%- endif %} &middot; {{ lab_counts.get(lab.name, 0) }} computer(s)
+            </div>
+            {% if lab.description %}<div class="lab-meta">{{ lab.description }}</div>{% endif %}
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('edit-lab-{{ lab.id }}').classList.toggle('open')">Edit</button>
+            <form method="post" action="{{ url_for('settings_delete_laboratory', lab_id=lab.id) }}" onsubmit="return confirm('Remove this laboratory? Computers already registered under it keep their records but lose this location link.');">
+              <button type="submit" class="btn btn-outline btn-sm">Remove</button>
+            </form>
+          </div>
+        </div>
+        <div id="edit-lab-{{ lab.id }}" class="lab-edit-form">
+          <form method="post" action="{{ url_for('settings_edit_laboratory', lab_id=lab.id) }}" data-smartlab-validate>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Laboratory Name *</label>
+                <input class="form-control" type="text" name="lab_name" value="{{ lab.name }}" required>
+              </div>
+              <div class="form-group">
+                <label>Code</label>
+                <input class="form-control" type="text" name="lab_code" value="{{ lab.code or '' }}">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Building</label>
+                <input class="form-control" type="text" name="lab_building" value="{{ lab.building or '' }}">
+              </div>
+              <div class="form-group">
+                <label>Floor</label>
+                <input class="form-control" type="text" name="lab_floor" value="{{ lab.floor or '' }}">
+              </div>
+              <div class="form-group">
+                <label>Room</label>
+                <input class="form-control" type="text" name="lab_room" value="{{ lab.room or '' }}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <input class="form-control" type="text" name="lab_description" value="{{ lab.description or '' }}">
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" data-busy-text="Saving…">Save changes</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p style="color:var(--text-muted); font-size:13px;">No laboratories added yet.</p>
+      {% endif %}
+
+      <h3 style="font-size:14px; margin:18px 0 12px;">Add a laboratory</h3>
+      <form method="post" action="{{ url_for('settings_add_laboratory') }}" data-smartlab-validate>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="lab_name">Laboratory Name<span class="required-mark">*</span></label>
+            <input class="form-control" type="text" id="lab_name" name="lab_name" placeholder="e.g. Computer Laboratory 1" required>
+          </div>
+          <div class="form-group">
+            <label for="lab_code">Laboratory Code</label>
+            <input class="form-control" type="text" id="lab_code" name="lab_code" placeholder="e.g. LAB-01">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="lab_building">Building</label>
+            <input class="form-control" type="text" id="lab_building" name="lab_building" placeholder="e.g. Main Building">
+          </div>
+          <div class="form-group">
+            <label for="lab_floor">Floor</label>
+            <input class="form-control" type="text" id="lab_floor" name="lab_floor" placeholder="e.g. 2nd Floor">
+          </div>
+          <div class="form-group">
+            <label for="lab_room">Room Number</label>
+            <input class="form-control" type="text" id="lab_room" name="lab_room" placeholder="e.g. Room 201">
+          </div>
+        </div>
+        <div class="hint" style="margin: -6px 0 14px;">Leave Building/Floor/Room blank and type a single line instead if you'd rather:</div>
+        <div class="form-group">
+          <label for="lab_location">Location (only needed if not using Building/Floor/Room above)</label>
+          <input class="form-control" type="text" id="lab_location" name="lab_location" placeholder="e.g. Main Building — Room 204">
+        </div>
+        <div class="form-group">
+          <label for="lab_description">Description</label>
+          <textarea class="form-control" id="lab_description" name="lab_description" placeholder="e.g. Main computer laboratory for student activities."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" data-done-btn data-busy-text="Adding…">Add laboratory</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {# ================= APPEARANCE ================= #}
+    {% if active_tab == 'appearance' %}
+    <div class="settings-card">
+      <h2>Appearance</h2>
+      <p class="card-sub">Personalizes the admin interface for your account. The public QR pages that students see are unaffected, so they always stay simple and consistent.</p>
+      <form method="post" action="{{ url_for('settings_appearance') }}" data-smartlab-guard>
+
+        <div class="form-group">
+          <label>Theme</label>
+          <div class="radio-cards">
+            <label class="radio-card"><input type="radio" name="theme" value="light" {% if s.theme == 'light' %}checked{% endif %}> Light</label>
+            <label class="radio-card"><input type="radio" name="theme" value="dark" {% if s.theme == 'dark' %}checked{% endif %}> Dark</label>
+            <label class="radio-card"><input type="radio" name="theme" value="system" {% if s.theme == 'system' %}checked{% endif %}> System Default</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Accent Color</label>
+          <div class="swatch-row">
+            {% for c in accent_colors %}
+            <label class="swatch-option">
+              <input type="radio" name="accent_color" value="{{ c }}" {% if s.accent_color == c %}checked{% endif %}>
+              <span class="swatch-circle" style="background: {{ {'Sky Green':'#7BCB74','Bright Green':'#35DF32','Strong Green':'#1D8A3E','Deep Green':'#0B2E17'}[c] }};"></span>
+              <span class="label">{{ c }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-text">
+            <div class="toggle-title">Compact Mode</div>
+            <div class="toggle-desc">Reduces padding for a denser layout.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" name="compact_mode" {% if s.compact_mode == 'on' %}checked{% endif %}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-text">
+            <div class="toggle-title">Animations</div>
+            <div class="toggle-desc">Subtle hover and transition effects throughout the admin interface.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" name="animations" {% if s.animations == 'on' %}checked{% endif %}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top:18px;" data-busy-text="Saving…">Save changes</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {# ================= QR CODES ================= #}
+    {% if active_tab == 'qr' %}
+    <div class="settings-card">
+      <h2>QR Code Generation</h2>
+      <p class="card-sub">Every computer keeps its own unique QR code, always pointing to that computer's public status page. Changing these settings only affects how new codes look — it never changes what they link to.</p>
+      <form method="post" action="{{ url_for('settings_qr_size') }}" data-smartlab-guard>
+        <div class="form-row">
+          <div class="form-group">
+            <label>QR Code Size</label>
+            <select class="form-control" name="qr_size">
+              {% for size in qr_size_options %}
+                <option value="{{ size }}" {% if s.qr_size == size %}selected{% endif %}>{{ size }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>QR Code Format</label>
+            <input class="form-control" type="text" value="PNG" disabled>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" data-busy-text="Saving…">Save QR settings</button>
+      </form>
+      <p class="hint" style="margin-top:14px;">QR code information: each code encodes a direct link such as <code>https://your-domain/qr/COMPUTER-ID</code> — no login required to view it.</p>
+    </div>
+
+    <div class="settings-card">
+      <h2>QR Code Actions</h2>
+      <div class="action-grid">
+        <form method="post" action="{{ url_for('settings_regenerate_all_qr') }}" onsubmit="return confirm('Regenerate QR codes for every computer using the current size setting?');">
+          <button type="submit" class="btn btn-primary btn-block">Regenerate All QR Codes</button>
+        </form>
+        <a href="{{ url_for('settings_download_all_qr') }}" class="btn btn-outline btn-block">Download All QR Codes (.zip)</a>
+        <a href="{{ url_for('settings_print_qr') }}" target="_blank" class="btn btn-outline btn-block">{{ icon('printer') }} Print QR Codes</a>
+        <a href="{{ url_for('computers_list') }}" class="btn btn-outline btn-block">Regenerate a Single QR Code &rarr;</a>
+      </div>
+      <p class="hint" style="margin-top:12px;">To regenerate just one computer's QR code, open that computer's detail page.</p>
+    </div>
+    {% endif %}
+
+    {# ================= SECURITY ================= #}
+    {% if active_tab == 'security' %}
+    <div class="settings-card">
+      <h2>Account Security</h2>
+      <div class="info-list">
+        <div class="info-row"><span class="info-label">Administrator Account</span><span class="info-value status-dot">Protected</span></div>
+        <div class="info-row"><span class="info-label">Password Storage</span><span class="info-value status-dot">Hashed (Werkzeug)</span></div>
+        <div class="info-row"><span class="info-label">Session Authentication</span><span class="info-value status-dot">Enabled</span></div>
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <h2>Session Settings</h2>
+      <form method="post" action="{{ url_for('settings_security') }}" data-smartlab-guard>
+        <div class="form-group">
+          <label for="session_timeout">Session Timeout</label>
+          <select class="form-control" id="session_timeout" name="session_timeout">
+            {% for minutes in session_timeout_options %}
+              <option value="{{ minutes }}" {% if s.session_timeout|int == minutes %}selected{% endif %}>{{ minutes }} minutes</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-text">
+            <div class="toggle-title">Auto Logout</div>
+            <div class="toggle-desc">Automatically end the session after the timeout above.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" name="auto_logout" {% if s.auto_logout == 'on' %}checked{% endif %}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-text">
+            <div class="toggle-title">Require Login for Administration</div>
+            <div class="toggle-desc">Always on — every admin page checks for a valid session. This cannot be disabled for security reasons.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" checked disabled>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:18px;">Save changes</button>
+      </form>
+    </div>
+
+    <div class="settings-card">
+      <h2>Recent Security Activity</h2>
+      {% if recent_activity %}
+        {% for a in recent_activity %}
+        <div class="activity-item">
+          <div class="act-title">{{ a.event_type }}</div>
+          <div class="act-meta">{{ a.username or "Unknown user" }} &middot; {{ a.timestamp }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="color:var(--text-muted); font-size:13px;">No activity recorded yet.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {# ================= SYSTEM ================= #}
+    {% if active_tab == 'system' %}
+    <div class="settings-card">
+      <h2>System Maintenance</h2>
+      <div class="info-list" style="margin-bottom:18px;">
+        <div class="info-row"><span class="info-label">Database Status</span><span class="info-value status-dot {{ '' if db_connected else 'bad' }}">{{ 'Connected' if db_connected else 'Error' }}</span></div>
+        <div class="info-row"><span class="info-label">QR Code Storage</span><span class="info-value status-dot {{ '' if qr_storage_ok else 'bad' }}">{{ 'Available' if qr_storage_ok else 'Unavailable' }}</span></div>
+        <div class="info-row"><span class="info-label">System Status</span><span class="info-value status-dot">Operational</span></div>
+      </div>
+      <div class="action-grid">
+        <a href="{{ url_for('settings_backup') }}" class="btn btn-primary btn-block">Backup Database</a>
+        <form method="post" action="{{ url_for('settings_check_system') }}">
+          <button type="submit" class="btn btn-outline btn-block">Check System</button>
+        </form>
+      </div>
+
+      <h3 style="font-size:14px; margin:22px 0 10px;">Clear Old Reports</h3>
+      <p class="hint" style="margin-bottom:10px;">Permanently deletes Resolved reports older than 90 days. Open reports are never affected.</p>
+      <form method="post" action="{{ url_for('settings_clear_old_reports') }}" onsubmit="return confirm('Permanently delete resolved reports older than 90 days?');" data-smartlab-validate class="confirm-delete-form">
+        <div class="confirm-input-row">
+          <input class="form-control" type="text" name="confirm_text" placeholder="Type DELETE to confirm" required>
+          <button type="submit" class="btn btn-danger" data-done-btn data-busy-text="Working…">Clear Old Reports</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="settings-card">
+      <h2>Data Management</h2>
+      <p class="card-sub">Database statistics: {{ dashboard_stats.total }} computers, {{ dashboard_stats.open_reports }} open reports, {{ dashboard_stats.resolved_reports }} resolved reports.</p>
+      <div class="action-grid">
+        <a href="{{ url_for('export_computers_csv') }}" class="btn btn-outline btn-block">Export Computers (CSV)</a>
+        <a href="{{ url_for('export_reports_csv') }}" class="btn btn-outline btn-block">Export Reports (CSV)</a>
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <h2>System Information</h2>
+      <div class="info-list">
+        <div class="info-row"><span class="info-label">Application Version</span><span class="info-value">{{ app_version }}</span></div>
+        <div class="info-row"><span class="info-label">Framework</span><span class="info-value">Flask</span></div>
+        <div class="info-row"><span class="info-label">Database</span><span class="info-value">SQLite</span></div>
+        <div class="info-row"><span class="info-label">Language</span><span class="info-value">Python</span></div>
+        <div class="info-row"><span class="info-label">QR Technology</span><span class="info-value">QR Code</span></div>
+        <div class="info-row"><span class="info-label">System Status</span><span class="info-value status-dot">Operational</span></div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ================= NOTIFICATIONS ================= #}
+    {% if active_tab == 'notifications' %}
+    <div class="settings-card">
+      <h2>Notifications</h2>
+      <form method="post" action="{{ url_for('settings_notifications') }}" data-smartlab-guard>
+        <div class="toggle-row">
+          <div class="toggle-text"><div class="toggle-title">New Report Notifications</div><div class="toggle-desc">Show the notification bell badge when a new report comes in.</div></div>
+          <label class="toggle-switch"><input type="checkbox" name="notif_new_report" {% if s.notif_new_report == 'on' %}checked{% endif %}><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-text"><div class="toggle-title">Resolved Report Notifications</div><div class="toggle-desc">Flash a confirmation when a report is marked resolved.</div></div>
+          <label class="toggle-switch"><input type="checkbox" name="notif_resolved_report" {% if s.notif_resolved_report == 'on' %}checked{% endif %}><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-text"><div class="toggle-title">System Alerts</div><div class="toggle-desc">Show alerts for system-level events (e.g. after Check System).</div></div>
+          <label class="toggle-switch"><input type="checkbox" name="notif_system_alerts" {% if s.notif_system_alerts == 'on' %}checked{% endif %}><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-text"><div class="toggle-title">Notification Sound</div><div class="toggle-desc">Play a short tone when a new open report appears while you're on the dashboard.</div></div>
+          <label class="toggle-switch"><input type="checkbox" name="notif_sound" {% if s.notif_sound == 'on' %}checked{% endif %}><span class="toggle-slider"></span></label>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:18px;" data-busy-text="Saving…">Save changes</button>
+      </form>
+      <p class="hint" style="margin-top:14px;">External email notifications are not enabled, since that requires configuring a mail server. All notifications here are shown inside the app.</p>
+    </div>
+    {% endif %}
+
+    {# ================= ABOUT ================= #}
+    {% if active_tab == 'about' %}
+    <div class="settings-card">
+      <h2>SmartLab</h2>
+      <p class="card-sub">QR-Based Computer Laboratory Monitoring System</p>
+      <p style="font-size:13.5px; line-height:1.6;">SmartLab provides a centralized system for monitoring laboratory computers, identifying computer status, reporting technical problems, and managing maintenance reports.</p>
+    </div>
+
+    <div class="settings-card">
+      <h2>Project Details</h2>
+      <form method="post" action="{{ url_for('settings_about') }}" data-smartlab-guard>
+        <div class="form-group">
+          <label for="about_developers">Developers</label>
+          <input class="form-control" type="text" id="about_developers" name="about_developers" value="{{ s.about_developers }}" placeholder="e.g. Juan Dela Cruz, Maria Santos">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="about_course">Course</label>
+            <input class="form-control" type="text" id="about_course" name="about_course" value="{{ s.about_course }}" placeholder="e.g. Introduction to Python Programming">
+          </div>
+          <div class="form-group">
+            <label for="about_section">Section</label>
+            <input class="form-control" type="text" id="about_section" name="about_section" value="{{ s.about_section }}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="about_school">School</label>
+          <input class="form-control" type="text" id="about_school" name="about_school" value="{{ s.about_school }}">
+        </div>
+        <button type="submit" class="btn btn-primary" data-busy-text="Saving…">Save changes</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {# ================= DANGER ZONE ================= #}
+    {% if active_tab == 'danger' %}
+    <div class="settings-card" style="border-color:#F3D2D2;">
+      <h2 style="color:var(--red);">Danger Zone</h2>
+      <p class="card-sub">These actions permanently delete data and cannot be undone. Type <strong>DELETE</strong> exactly to confirm each one.</p>
+
+      <div class="danger-card">
+        <h3>Delete All Reports</h3>
+        <p>Removes every report (open and resolved). Computers under repair only because of a report will return to Working.</p>
+        <form method="post" action="{{ url_for('danger_delete_reports') }}" onsubmit="return confirm('Are you sure you want to continue? This action cannot be undone.');" data-smartlab-validate class="confirm-delete-form">
+          <div class="confirm-input-row">
+            <input class="form-control" type="text" name="confirm_text" placeholder="Type DELETE to confirm" required>
+            <button type="submit" class="btn btn-danger" data-done-btn data-busy-text="Working…">Delete All Reports</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="danger-card">
+        <h3>Reset Computer Records</h3>
+        <p>Deletes every computer and all of its reports, and removes their QR code image files.</p>
+        <form method="post" action="{{ url_for('danger_reset_computers') }}" onsubmit="return confirm('Are you sure you want to continue? This action cannot be undone.');" data-smartlab-validate class="confirm-delete-form">
+          <div class="confirm-input-row">
+            <input class="form-control" type="text" name="confirm_text" placeholder="Type DELETE to confirm" required>
+            <button type="submit" class="btn btn-danger" data-done-btn data-busy-text="Working…">Reset Computer Records</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="danger-card">
+        <h3>Reset Application Data</h3>
+        <p>Deletes all computers and reports and clears all QR code files. Your admin account and saved settings are kept, so you will not be locked out.</p>
+        <form method="post" action="{{ url_for('danger_reset_all') }}" onsubmit="return confirm('Are you sure you want to continue? This action cannot be undone.');" data-smartlab-validate class="confirm-delete-form">
+          <div class="confirm-input-row">
+            <input class="form-control" type="text" name="confirm_text" placeholder="Type DELETE to confirm" required>
+            <button type="submit" class="btn btn-danger" data-done-btn data-busy-text="Working…">Reset Application Data</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+<script>
+  document.querySelectorAll(".confirm-delete-form").forEach(function (form) {
+    var input = form.querySelector('input[name="confirm_text"]');
+    if (!input) return;
+    input.addEventListener("input", function () {
+      input.setCustomValidity(input.value === "DELETE" ? "" : "Type DELETE exactly to enable this button");
+    });
+    input.setCustomValidity("Type DELETE exactly to enable this button");
+  });
+</script>
+{% endblock %}

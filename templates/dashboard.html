@@ -1,0 +1,294 @@
+{% extends "base_admin.html" %}
+{% from "_icons.html" import icon %}
+{% set active = 'dashboard' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+
+{% if show_welcome %}
+<div class="smartlab-welcome" id="smartlab-welcome">
+  <div class="smartlab-welcome-inner">
+    <div class="smartlab-welcome-logo-card">
+      <img src="{{ url_for('static', filename='img/logo_loading.png') }}" alt="SmartLab">
+    </div>
+    <div class="smartlab-welcome-text">Welcome back, {{ session.username }}!</div>
+    <div class="smartlab-welcome-sub">Loading your dashboard…</div>
+  </div>
+</div>
+<script>
+  (function () {
+    setTimeout(function () {
+      var el = document.getElementById("smartlab-welcome");
+      if (el) {
+        el.classList.add("hide");
+        setTimeout(function () { el.remove(); }, 500);
+      }
+    }, 1000);
+  })();
+</script>
+{% endif %}
+
+<div class="toolbar" style="margin-bottom:16px;">
+  <div class="last-updated"><span class="live-dot"></span> Last updated: <span id="last-updated-time">just now</span></div>
+</div>
+
+<div class="welcome-banner">
+  <div class="welcome-banner-text">
+    <div class="welcome-banner-eyebrow">Welcome back,</div>
+    <h2>{{ session.username }}!</h2>
+    <p>Here's what's happening in your computer lab today.</p>
+  </div>
+  <div class="welcome-banner-tagline">
+    Smarter Monitoring.<br>Better Learning.
+    <div class="welcome-banner-rule"></div>
+  </div>
+</div>
+
+<div class="quick-actions-row" style="margin-bottom:20px;">
+  <a href="{{ url_for('add_computer') }}" class="quick-action-card">
+    <div class="qa-icon">{{ icon('plus') }}</div>
+    <div class="qa-label">Add Computer</div>
+  </a>
+  <a href="{{ url_for('settings', tab='qr') }}" class="quick-action-card">
+    <div class="qa-icon">{{ icon('qr') }}</div>
+    <div class="qa-label">Manage QR Codes</div>
+  </a>
+  <a href="{{ url_for('reports_list', tab='open') }}" class="quick-action-card">
+    <div class="qa-icon">{{ icon('alert') }}</div>
+    <div class="qa-label">View Open Reports</div>
+  </a>
+  <a href="{{ url_for('statistics') }}" class="quick-action-card">
+    <div class="qa-icon">{{ icon('chart') }}</div>
+    <div class="qa-label">View Statistics</div>
+  </a>
+</div>
+
+<div class="grid grid-2" style="grid-template-columns: 1.1fr 2fr; margin-bottom: 18px; align-items: stretch;">
+  <div class="health-card">
+    <div class="health-ring-wrap">
+      <svg class="health-ring" viewBox="0 0 120 120" width="128" height="128">
+        <circle class="health-ring-track" cx="60" cy="60" r="52"></circle>
+        <circle class="health-ring-fill" id="health-ring-fill" cx="60" cy="60" r="52"
+                stroke-dasharray="326.7" stroke-dashoffset="{{ 326.7 - (326.7 * stats.health / 100) }}"></circle>
+      </svg>
+      <div class="health-ring-center">
+        <span class="health-pct" id="health-pct" data-value="{{ stats.health }}" data-percent>{{ stats.health }}%</span>
+      </div>
+    </div>
+    <div style="width:100%;">
+      <h3 style="margin-top:0;">System health</h3>
+      <div class="health-sub" id="health-sub-label">{{ stats.working }} / {{ stats.total }} computers operational</div>
+      <div class="health-sub-list">
+        <span class="health-sub-item">✓ <strong id="health-working">{{ stats.working }}</strong> Working</span>
+        <span class="health-sub-item">⚠ <strong id="health-repair">{{ stats.under_repair }}</strong> Under Repair</span>
+        <span class="health-sub-item">✕ <strong id="health-offline">{{ stats.offline }}</strong> Offline</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-5">
+    <div class="stat-card accent-blue">
+      <div class="stat-label">Total computers</div>
+      <div class="stat-value" id="stat-total" data-value="{{ stats.total }}">{{ stats.total }}</div>
+    </div>
+    <div class="stat-card accent-green">
+      <div class="stat-label">Working</div>
+      <div class="stat-value" id="stat-working" data-value="{{ stats.working }}">{{ stats.working }}</div>
+    </div>
+    <div class="stat-card accent-orange">
+      <div class="stat-label">Under repair</div>
+      <div class="stat-value" id="stat-repair" data-value="{{ stats.under_repair }}">{{ stats.under_repair }}</div>
+    </div>
+    <div class="stat-card accent-red">
+      <div class="stat-label">Offline</div>
+      <div class="stat-value" id="stat-offline" data-value="{{ stats.offline }}">{{ stats.offline }}</div>
+    </div>
+    <div class="stat-card accent-red {{ 'stat-card-alert' if stats.critical_reports }}" id="critical-card">
+      <div class="stat-label">Critical reports</div>
+      <div class="stat-value" id="stat-critical" data-value="{{ stats.critical_reports }}">{{ stats.critical_reports }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom:18px;">
+  <div class="panel chart-card">
+    <h3>Computer status distribution</h3>
+    <canvas id="statusChart" height="220" role="img" aria-label="Computer status distribution chart"></canvas>
+  </div>
+
+  <div class="panel chart-card">
+    <h3>Most common reported problems</h3>
+    {% if issue_counts %}
+      <canvas id="issueChart" height="220" role="img" aria-label="Reported problems chart"></canvas>
+    {% else %}
+      <p style="color:var(--text-muted); font-size:13px;">No reports have been filed yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="panel chart-card">
+    <h3>Open vs Resolved reports</h3>
+    <canvas id="reportsChart" height="200" role="img" aria-label="Open versus resolved reports chart"></canvas>
+  </div>
+
+  <div class="panel">
+    <h3>Recent activity</h3>
+    <div class="activity-feed" id="activity-feed">
+      {% if recent_activity %}
+        {% for a in recent_activity %}
+        <div class="activity-row">
+          <div class="activity-icon ic-{{ a.icon }}">{{ icon(a.icon) }}</div>
+          <div class="activity-text">
+            <div class="at-title">{{ a.event_type }}</div>
+            <div class="at-time" data-timestamp="{{ a.timestamp }}">{{ a.timestamp }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="color:var(--text-muted); font-size:13px;">No activity yet — actions like adding a computer or resolving a report will show up here.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+<script>
+(function () {
+  var statusColors = { Working: "#16A34A", "Under Repair": "#F59E0B", Offline: "#DC2626" };
+
+  var statusChart = new Chart(document.getElementById("statusChart"), {
+    type: "doughnut",
+    data: {
+      labels: ["Working", "Under Repair", "Offline"],
+      datasets: [{
+        data: [{{ stats.working }}, {{ stats.under_repair }}, {{ stats.offline }}],
+        backgroundColor: [statusColors.Working, statusColors["Under Repair"], statusColors.Offline],
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 12 } } },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0) || 1;
+              var pct = Math.round((ctx.parsed / total) * 100);
+              return ctx.label + ": " + ctx.parsed + " (" + pct + "%)";
+            }
+          }
+        }
+      },
+      cutout: "68%",
+      animation: { duration: 500 },
+    }
+  });
+
+  var issueCanvas = document.getElementById("issueChart");
+  var issueChart = null;
+  if (issueCanvas) {
+    issueChart = new Chart(issueCanvas, {
+      type: "bar",
+      data: {
+        labels: {{ issue_counts | map(attribute='issue_type') | list | tojson }},
+        datasets: [{
+          data: {{ issue_counts | map(attribute='total') | list | tojson }},
+          backgroundColor: "#1D8A3E",
+          borderRadius: 6,
+          maxBarThickness: 28,
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+        animation: { duration: 500 },
+      }
+    });
+  }
+
+  var reportsChart = new Chart(document.getElementById("reportsChart"), {
+    type: "doughnut",
+    data: {
+      labels: ["Open", "Resolved"],
+      datasets: [{
+        data: [{{ stats.open_reports }}, {{ stats.resolved_reports }}],
+        backgroundColor: ["#F59E0B", "#16A34A"],
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 12 } } },
+      },
+      cutout: "60%",
+      animation: { duration: 500 },
+    }
+  });
+
+  function updateHealthUI(stats) {
+    smartlabAnimateNumber(document.getElementById("health-pct"), stats.health, 600);
+    var healthCircumference = 326.7;
+    document.getElementById("health-ring-fill").style.strokeDashoffset = healthCircumference - (healthCircumference * stats.health / 100);
+    document.getElementById("health-sub-label").textContent = stats.working + " / " + stats.total + " computers operational";
+    document.getElementById("health-working").textContent = stats.working;
+    document.getElementById("health-repair").textContent = stats.under_repair;
+    document.getElementById("health-offline").textContent = stats.offline;
+  }
+
+  function updateStatCards(stats) {
+    smartlabAnimateNumber(document.getElementById("stat-total"), stats.total);
+    smartlabAnimateNumber(document.getElementById("stat-working"), stats.working);
+    smartlabAnimateNumber(document.getElementById("stat-repair"), stats.under_repair);
+    smartlabAnimateNumber(document.getElementById("stat-offline"), stats.offline);
+    smartlabAnimateNumber(document.getElementById("stat-critical"), stats.critical_reports);
+    var criticalCard = document.getElementById("critical-card");
+    if (criticalCard) {
+      criticalCard.classList.toggle("stat-card-alert", stats.critical_reports > 0);
+    }
+  }
+
+  function updateCharts(stats, issueCounts) {
+    statusChart.data.datasets[0].data = [stats.working, stats.under_repair, stats.offline];
+    statusChart.update();
+
+    reportsChart.data.datasets[0].data = [stats.open_reports, stats.resolved_reports];
+    reportsChart.update();
+
+    if (issueChart && issueCounts) {
+      issueChart.data.labels = issueCounts.map(function (r) { return r.issue_type; });
+      issueChart.data.datasets[0].data = issueCounts.map(function (r) { return r.total; });
+      issueChart.update();
+    }
+  }
+
+  function updateActivityFeed(activity) {
+    var feed = document.getElementById("activity-feed");
+    if (!feed || !activity || !activity.length) return;
+    feed.innerHTML = activity.map(function (a) {
+      return '<div class="activity-row">' +
+        '<div class="activity-icon ic-' + a.icon + '">•</div>' +
+        '<div class="activity-text">' +
+        '<div class="at-title">' + a.event_type + '</div>' +
+        '<div class="at-time" data-timestamp="' + a.timestamp + '">' + a.timestamp + '</div>' +
+        '</div></div>';
+    }).join("");
+    smartlabRefreshRelativeTimes();
+  }
+
+  document.addEventListener("smartlab:dashboard-data", function (e) {
+    var data = e.detail;
+    updateHealthUI(data.stats);
+    updateStatCards(data.stats);
+    updateCharts(data.stats, data.issue_counts);
+    updateActivityFeed(data.activity);
+    document.getElementById("last-updated-time").textContent = data.server_time;
+  });
+})();
+</script>
+{% endblock %}

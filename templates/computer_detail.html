@@ -1,0 +1,305 @@
+{% extends "base_admin.html" %}
+{% from "_icons.html" import icon %}
+{% from "_badges.html" import status_badge, report_badge, priority_badge %}
+{% set active = 'computers' %}
+{% block title %}{{ computer['computer_id'] }}{% endblock %}
+{% block page_title %}{{ computer['computer_id'] }}{% endblock %}
+
+{% block content %}
+
+<div class="grid grid-2" style="grid-template-columns: 1fr 1.6fr; align-items:start;">
+
+  <div>
+    <div class="panel" style="text-align:center; margin-bottom:18px;">
+      <div style="display:flex; justify-content:center; margin-bottom:14px;">{{ status_badge(computer['status']) }}</div>
+      <img src="{{ url_for('static', filename=computer['qr_path']) }}" alt="QR code" style="width:180px; height:180px; border:1px solid var(--border); border-radius:12px; padding:10px; margin-bottom:16px;">
+      <div style="font-size:13px; color:var(--text-muted); margin-bottom:18px;">
+        {{ computer['lab'] }} · Workstation {{ computer['number'] }}<br>
+        {% set full_location = [computer['lab_building'], computer['lab_floor'], computer['lab_room']] | select | join(' \u2022 ') %}
+        {% if full_location %}{{ full_location }}<br>{% elif computer['lab_location'] %}{{ computer['lab_location'] }}<br>{% endif %}
+        Added {{ computer['date_added'] }}
+      </div>
+
+      <a href="{{ url_for('static', filename=computer['qr_path']) }}" download class="btn btn-outline btn-block" style="margin-bottom:10px;">{{ icon('printer') }} Download QR image</a>
+      <a href="{{ url_for('settings_print_qr', computer_id=computer['computer_id']) }}" target="_blank" class="btn btn-outline btn-block" style="margin-bottom:10px;">{{ icon('printer') }} Print label</a>
+      <a href="{{ url_for('public_status', computer_id=computer['computer_id']) }}" target="_blank" class="btn btn-outline btn-block">View public page</a>
+
+      <button type="button" class="btn btn-outline btn-block" style="margin-bottom:10px;"
+              onclick="document.getElementById('edit-computer-form').classList.toggle('open')">Edit computer</button>
+
+      <form method="post" action="{{ url_for('delete_computer', computer_id=computer['computer_id']) }}"
+            onsubmit="return confirm('Delete {{ computer['computer_id'] }} and its report history? This cannot be undone.');" style="margin-top:10px;">
+        <button type="submit" class="btn btn-danger btn-block">Delete computer</button>
+      </form>
+    </div>
+
+    <div id="edit-computer-form" class="lab-edit-form panel" style="margin-bottom:18px;">
+      <h3>Edit computer</h3>
+      <form method="post" action="{{ url_for('edit_computer', computer_id=computer['computer_id']) }}" data-smartlab-validate>
+        <div class="form-group">
+          <label>Computer ID *</label>
+          <input class="form-control" type="text" name="computer_id" value="{{ computer['computer_id'] }}" required>
+          <p class="hint">Changing this generates a brand-new QR code and retires the old one — reprint the label if you rename it.</p>
+        </div>
+        <div class="form-group">
+          <label>Laboratory *</label>
+          <select class="form-control" name="laboratory_id" required>
+            {% for lab in laboratories %}
+            <option value="{{ lab.id }}" {% if lab.id == computer['laboratory_id'] %}selected{% endif %}>{{ lab.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Workstation Number *</label>
+          <input class="form-control" type="number" name="number" value="{{ computer['number'] }}" min="1" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" data-busy-text="Saving…">Save changes</button>
+      </form>
+    </div>
+
+    <div class="panel" style="margin-bottom:18px;">
+      <h3>Change status</h3>
+      <form method="post" action="{{ url_for('change_status', computer_id=computer['computer_id']) }}" data-smartlab-validate id="status-form">
+        <div class="form-group">
+          <select name="status" class="form-control" id="status-select" data-current="{{ computer['status'] }}">
+            {% for opt in status_options %}
+              <option value="{{ opt }}" {% if opt == computer['status'] %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <input class="form-control" type="text" name="reason" placeholder="Reason (optional)">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" data-done-btn data-busy-text="Updating…">Update status</button>
+      </form>
+      <script>
+        (function () {
+          var select = document.getElementById("status-select");
+          function checkChanged() {
+            select.setCustomValidity(select.value === select.dataset.current ? "Choose a different status to update" : "");
+          }
+          select.addEventListener("change", checkChanged);
+          checkChanged();
+        })();
+      </script>
+    </div>
+
+    <div class="panel">
+      <div class="collapsible-toggle" id="history-toggle">
+        <h3 style="margin:0;">Status history {% if status_history %}<span style="color:var(--text-muted); font-weight:500; font-size:12px;">({{ status_history|length }})</span>{% endif %}</h3>
+        {{ icon('chevron') }}
+      </div>
+      <div class="collapsible-body" id="history-body">
+        {% if status_history %}
+        <div class="history-list">
+          {% for h in status_history %}
+          <div class="history-item">
+            <div class="hi-transition">
+              {% if h['old_status'] %}{{ status_badge(h['old_status']) }} <span class="hi-arrow">→</span>{% endif %}
+              {{ status_badge(h['new_status']) }}
+            </div>
+            <div class="hi-meta">{{ h['timestamp'] }}{% if h['changed_by'] %} · Changed by {{ h['changed_by'] }}{% endif %}</div>
+            {% if h['reason'] %}<div class="hi-reason">{{ h['reason'] }}</div>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:var(--text-muted); font-size:13px;">No status changes recorded yet.</p>
+        {% endif %}
+      </div>
+      <script>
+        (function () {
+          var toggle = document.getElementById("history-toggle");
+          var body = document.getElementById("history-body");
+          toggle.addEventListener("click", function () {
+            toggle.classList.toggle("open");
+            body.classList.toggle("open");
+          });
+        })();
+      </script>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel" style="margin-bottom:18px;">
+      <h3>Specifications</h3>
+      <form method="post" action="{{ url_for('update_specs', computer_id=computer['computer_id']) }}" data-smartlab-guard>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="cpu">CPU</label>
+            <input class="form-control" type="text" id="cpu" name="cpu" value="{{ computer['cpu'] or '' }}" placeholder="e.g. Intel Core i5-10400">
+          </div>
+          <div class="form-group">
+            <label for="ram">RAM</label>
+            <input class="form-control" type="text" id="ram" name="ram" value="{{ computer['ram'] or '' }}" placeholder="e.g. 8GB DDR4">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="storage">Storage</label>
+            <input class="form-control" type="text" id="storage" name="storage" value="{{ computer['storage'] or '' }}" placeholder="e.g. 256GB SSD">
+          </div>
+          <div class="form-group">
+            <label for="os">Operating System</label>
+            <input class="form-control" type="text" id="os" name="os" value="{{ computer['os'] or '' }}" placeholder="e.g. Windows 11">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="monitor">Monitor</label>
+            <input class="form-control" type="text" id="monitor" name="monitor" value="{{ computer['monitor'] or '' }}">
+          </div>
+          <div class="form-group">
+            <label for="keyboard">Keyboard</label>
+            <input class="form-control" type="text" id="keyboard" name="keyboard" value="{{ computer['keyboard'] or '' }}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="mouse">Mouse</label>
+            <input class="form-control" type="text" id="mouse" name="mouse" value="{{ computer['mouse'] or '' }}">
+          </div>
+          <div class="form-group">
+            <label for="internet">Internet</label>
+            <input class="form-control" type="text" id="internet" name="internet" value="{{ computer['internet'] or '' }}" placeholder="e.g. Wired / Wi-Fi">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="specs_notes">Notes</label>
+          <textarea class="form-control" id="specs_notes" name="specs_notes" placeholder="Any other notes about this unit">{{ computer['specs_notes'] or '' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" data-busy-text="Saving…">Save specifications</button>
+      </form>
+      <p class="hint" style="margin-top:10px;">All fields are optional — leave blank if not applicable.</p>
+    </div>
+
+    <div class="panel" style="margin-bottom:18px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <h3 style="margin:0;">Report history {% if open_count %}<span class="badge badge-open">{{ open_count }} open</span>{% endif %}</h3>
+        {% if reports %}<a href="{{ url_for('print_reports', computer_id=computer['computer_id']) }}" target="_blank" class="btn btn-outline btn-sm">{{ icon('printer') }} Print log</a>{% endif %}
+      </div>
+      {% if reports %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Issue</th><th>Priority</th><th>Reported by</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody>
+          {% for r in reports %}
+            <tr>
+              <td data-label="Issue">{{ r['issue_type'] }}{% if r['description'] %}<div style="color:var(--text-muted); font-size:12px; margin-top:3px;">{{ r['description'] }}</div>{% endif %}</td>
+              <td data-label="Priority">
+                <form method="post" action="{{ url_for('update_priority', report_id=r['id']) }}" data-smartlab-guard style="display:inline-flex; gap:4px; align-items:center;">
+                  <select name="priority" class="form-control" style="padding:4px 6px; font-size:12px;" onchange="this.form.requestSubmit()" {% if r['status'] == 'Resolved' %}disabled{% endif %}>
+                    {% for p in priority_options %}
+                      <option value="{{ p }}" {% if p == r['priority'] %}selected{% endif %}>{{ p }}</option>
+                    {% endfor %}
+                  </select>
+                </form>
+              </td>
+              <td data-label="Reported by">{{ r['reporter'] }}</td>
+              <td data-label="Date">{{ r['date_reported'] }}</td>
+              <td data-label="Status">{{ report_badge(r['status']) }}
+                {% if r['status'] != 'Resolved' %}
+                <form method="post" action="{{ url_for('update_report_workflow', report_id=r['id']) }}" data-smartlab-guard style="margin-top:6px;">
+                  <select name="status" class="form-control" style="padding:4px 6px; font-size:12px;" onchange="this.form.requestSubmit()">
+                    {% for s in report_status_options %}
+                      <option value="{{ s }}" {% if s == r['status'] %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                  </select>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="color:var(--text-muted); font-size:13px;">No reports have been filed for this computer yet.</p>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <h3>Maintenance history {% if last_maintenance %}<span style="color:var(--text-muted); font-weight:500; font-size:12px;">— last: {{ last_maintenance['start_date'] }}</span>{% endif %}</h3>
+
+      {% if maintenance_records %}
+        {% for m in maintenance_records %}
+        <div class="maintenance-card">
+          <div class="mc-head">
+            <span class="mc-tech">{{ m['technician'] or 'Unassigned' }}</span>
+            <span class="mc-dates">{{ m['start_date'] }}{% if m['completion_date'] %} → {{ m['completion_date'] }}{% endif %}</span>
+          </div>
+          {% if m['problem'] %}<div class="mc-row"><span class="mc-label">Problem:</span>{{ m['problem'] }}</div>{% endif %}
+          {% if m['diagnosis'] %}<div class="mc-row"><span class="mc-label">Diagnosis:</span>{{ m['diagnosis'] }}</div>{% endif %}
+          {% if m['action_taken'] %}<div class="mc-row"><span class="mc-label">Action taken:</span>{{ m['action_taken'] }}</div>{% endif %}
+          {% if m['parts_replaced'] %}<div class="mc-row"><span class="mc-label">Parts replaced:</span>{{ m['parts_replaced'] }}</div>{% endif %}
+          {% if m['result'] %}<div class="mc-row"><span class="mc-label">Result:</span>{{ m['result'] }}</div>{% endif %}
+          {% if m['remarks'] %}<div class="mc-row"><span class="mc-label">Remarks:</span>{{ m['remarks'] }}</div>{% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="color:var(--text-muted); font-size:13px; margin-bottom:16px;">No maintenance records yet.</p>
+      {% endif %}
+
+      <h4 style="font-size:13px; margin:18px 0 10px;">Add a maintenance record</h4>
+      <form method="post" action="{{ url_for('add_maintenance_record', computer_id=computer['computer_id']) }}" data-smartlab-validate>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="technician">Technician<span class="required-mark">*</span></label>
+            <input class="form-control" type="text" id="technician" name="technician" required>
+          </div>
+          <div class="form-group">
+            <label for="report_id">Related report (optional)</label>
+            <select class="form-control" id="report_id" name="report_id">
+              <option value="">None</option>
+              {% for r in reports %}
+                <option value="{{ r['id'] }}">#{{ r['id'] }} — {{ r['issue_type'] }} ({{ r['date_reported'] }})</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="problem">Problem<span class="required-mark">*</span></label>
+          <input class="form-control" type="text" id="problem" name="problem" required>
+        </div>
+        <div class="form-group">
+          <label for="diagnosis">Diagnosis</label>
+          <input class="form-control" type="text" id="diagnosis" name="diagnosis">
+        </div>
+        <div class="form-group">
+          <label for="action_taken">Action taken</label>
+          <input class="form-control" type="text" id="action_taken" name="action_taken">
+        </div>
+        <div class="form-group">
+          <label for="parts_replaced">Parts replaced</label>
+          <input class="form-control" type="text" id="parts_replaced" name="parts_replaced">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="start_date">Start date<span class="required-mark">*</span></label>
+            <input class="form-control" type="date" id="start_date" name="start_date" required>
+          </div>
+          <div class="form-group">
+            <label for="completion_date">Completion date</label>
+            <input class="form-control" type="date" id="completion_date" name="completion_date">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="result">Result</label>
+          <select class="form-control" id="result" name="result">
+            <option value="">Not yet determined</option>
+            {% for opt in maintenance_result_options %}
+              <option value="{{ opt }}">{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="remarks">Remarks</label>
+          <textarea class="form-control" id="remarks" name="remarks"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" data-done-btn data-busy-text="Saving…">Add maintenance record</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,136 @@
+{% extends "base_admin.html" %}
+{% from "_icons.html" import icon %}
+{% from "_badges.html" import report_badge, priority_badge %}
+{% set active = 'reports' %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Reports{% endblock %}
+
+{% block content %}
+
+<div class="tabs" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+  <div>
+    <a class="tab {% if tab == 'open' %}active{% endif %}" href="{{ url_for('reports_list', tab='open', lab=lab_filter) }}">Open reports</a>
+    <a class="tab {% if tab == 'resolved' %}active{% endif %}" href="{{ url_for('reports_list', tab='resolved', lab=lab_filter) }}">Resolved reports</a>
+  </div>
+  <div style="display:flex; gap:10px; align-items:center;">
+    <select class="form-control" id="reports-lab-filter" style="width:auto; min-width:180px;">
+      <option value="All" {% if lab_filter == 'All' %}selected{% endif %}>All Laboratories</option>
+      {% for lab in laboratories %}
+        <option value="{{ lab['id'] }}" {% if lab_filter == lab['id']|string %}selected{% endif %}>{{ lab['name'] }}</option>
+      {% endfor %}
+    </select>
+    <a href="{{ url_for('print_reports', status=tab, lab_id=lab_filter if lab_filter != 'All' else None) }}" target="_blank" class="btn btn-outline btn-sm">{{ icon('printer') }} Print report log</a>
+  </div>
+</div>
+
+{% if reports %}
+{% for group in groups %}
+  <div class="panel" style="margin: 18px 0 10px; padding: 14px 20px;">
+    <h3 style="margin:0 0 2px;">
+      {% if group.lab %}
+        <a href="{{ url_for('laboratory_detail', lab_id=group.lab['id']) }}">{{ group.lab['name'] }}</a>
+        {%- if group.lab['code'] %} <span style="font-weight:400; color:var(--text-muted); font-size:13px;">({{ group.lab['code'] }})</span>{% endif %}
+      {% else %}
+        Unassigned
+      {% endif %}
+    </h3>
+    {% if group.lab %}
+    <div style="font-size:12.5px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+      <span style="display:inline-flex; width:13px; height:13px; flex-shrink:0;">{{ icon('building') }}</span>
+      {%- if group.lab['building'] or group.lab['floor'] or group.lab['room'] -%}
+        {{ [group.lab['building'], group.lab['floor'], group.lab['room']] | select | join(' \u2022 ') }}
+      {%- elif group.lab['location'] -%}
+        {{ group.lab['location'] }}
+      {%- else -%}
+        No physical location set
+      {%- endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="panel" style="padding:0; margin-bottom: 18px;">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>Computer</th><th>Issue</th><th>Priority</th><th>Reported by</th><th>Date</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for r in group.reports %}
+          <tr>
+            <td data-label="Computer"><a href="{{ url_for('computer_detail', computer_id=r['computer_id']) }}" style="font-weight:600; color:var(--accent);">{{ r['computer_id'] }}</a> · WS{{ r['number'] }}</td>
+            <td data-label="Issue">{{ r['issue_type'] }}{% if r['description'] %}<div style="color:var(--text-muted); font-size:12px; margin-top:3px; max-width:260px;">{{ r['description'] }}</div>{% endif %}</td>
+            <td data-label="Priority">{{ priority_badge(r['priority']) }}</td>
+            <td data-label="Reported by">{{ r['reporter'] }}</td>
+            <td data-label="Date">{{ r['date_reported'] }}</td>
+            <td data-label="Status">{{ report_badge(r['status']) }}</td>
+            <td data-label="">
+              {% if r['status'] != 'Resolved' %}
+              <button type="button" class="btn btn-primary btn-sm resolve-btn" data-report-id="{{ r['id'] }}">{{ icon('check') }} Resolve</button>
+              {% else %}
+              <span style="color:var(--text-muted); font-size:12px;">Resolved {{ r['date_resolved'] }}</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endfor %}
+
+{% if total_pages > 1 %}
+<div class="pagination">
+  <a href="{{ url_for('reports_list', tab=tab, page=page-1, lab=lab_filter) }}" class="btn btn-outline btn-sm {{ 'btn-disabled-link' if page <= 1 }}">{{ icon('chevron-left') }} Previous</a>
+  <span class="pagination-info">Page {{ page }} of {{ total_pages }} &middot; {{ total }} report{{ 's' if total != 1 }}</span>
+  <a href="{{ url_for('reports_list', tab=tab, page=page+1, lab=lab_filter) }}" class="btn btn-outline btn-sm {{ 'btn-disabled-link' if page >= total_pages }}">Next {{ icon('chevron-right') }}</a>
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  {{ icon('check-circle') }}
+  {% set lab_name = laboratories|selectattr('id', 'equalto', lab_filter|int(-1))|map(attribute='name')|first %}
+  <h3>{% if tab == 'open' %}All clear{% else %}No resolved reports yet{% endif %}{% if lab_name %} for {{ lab_name }}{% endif %}</h3>
+  <p>{% if tab == 'open' %}There are currently no open problem reports{% else %}Resolved reports will show up here{% endif %}{% if lab_name %} for this laboratory{% endif %}.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll(".resolve-btn").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    var reportId = btn.getAttribute("data-report-id");
+    btn.disabled = true;
+    fetch("/api/reports/" + reportId + "/resolve", {
+      method: "POST",
+      headers: { "X-CSRFToken": window.smartlabCsrfToken ? window.smartlabCsrfToken() : "" },
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data.success) { smartlabToast(data.error || "Unable to resolve report.", "error"); btn.disabled = false; return; }
+        var row = btn.closest("tr");
+        row.style.transition = "opacity 0.3s ease";
+        row.style.opacity = "0";
+        setTimeout(function () {
+          row.remove();
+          if (!document.querySelector(".data-table tbody tr")) { location.reload(); }
+        }, 300);
+        smartlabToast("Report resolved.", "success");
+      })
+      .catch(function () { smartlabToast("Network error resolving report.", "error"); btn.disabled = false; });
+  });
+});
+
+var labFilter = document.getElementById("reports-lab-filter");
+if (labFilter) {
+  labFilter.addEventListener("change", function () {
+    var url = new URL(window.location.href);
+    url.searchParams.set("lab", labFilter.value);
+    url.searchParams.delete("page");
+    window.location.href = url.toString();
+  });
+}
+</script>
+{% endblock %}

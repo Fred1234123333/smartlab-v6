@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartLab — Computer Laboratory Monitoring System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+{% include "_splash.html" %}
+<div class="public-page">
+  <nav class="public-nav">
+    <div class="brand brand-logo-plain"><img src="{{ url_for('static', filename='img/sfxc_logo_header.png') }}" alt="Saint Francis Xavier College" class="sfxc-crest"><img src="{{ url_for('static', filename='img/logo_full.png') }}" alt="SmartLab"></div>
+    <a href="{{ url_for('login') }}" class="btn btn-outline">Admin login</a>
+  </nav>
+
+  <div class="hero hero-photo">
+    <div class="hero-inner">
+      <div class="hero-eyebrow">Computer laboratory monitoring</div>
+      <h1>Know the condition of every lab computer, instantly.</h1>
+      <p class="lead">Monitor · Report · Resolve — scan a computer's QR code to check its status or report a problem, no login required.</p>
+      <div class="cta-row">
+        <a href="{{ url_for('login') }}" class="btn btn-primary">Admin login</a>
+      </div>
+
+      <div class="workflow">
+        <div class="workflow-step">
+          <div class="workflow-num">1</div>
+          <h4>Scan the QR code</h4>
+          <p>Each computer has its own code, printed and attached to the unit.</p>
+        </div>
+        <div class="workflow-step">
+          <div class="workflow-num">2</div>
+          <h4>Check its status</h4>
+          <p>See instantly whether it's working, under repair, or offline.</p>
+        </div>
+        <div class="workflow-step">
+          <div class="workflow-num">3</div>
+          <h4>Report a problem</h4>
+          <p>Found an issue? Submit a report directly from your phone.</p>
+        </div>
+        <div class="workflow-step">
+          <div class="workflow-num">4</div>
+          <h4>Technician resolves it</h4>
+          <p>Lab staff track and resolve every report from one dashboard.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="public-footer">SmartLab — QR-Based Computer Laboratory Monitoring System</footer>
+</div>
+</body>
+</html>

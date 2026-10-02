@@ -1,0 +1,96 @@
+{% extends "base_admin.html" %}
+{% from "_icons.html" import icon %}
+{% from "_badges.html" import status_badge, report_badge, priority_badge %}
+{% set active = 'laboratories' %}
+{% block title %}{{ lab['name'] }}{% endblock %}
+{% block page_title %}{{ lab['name'] }}{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="margin-bottom:18px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h2 style="margin:0 0 4px;">{{ lab['name'] }}{% if lab['code'] %} <span style="font-weight:400; color:var(--text-muted); font-size:16px;">({{ lab['code'] }})</span>{% endif %}</h2>
+      <div style="color:var(--text-muted); font-size:14px; display:flex; align-items:center; gap:6px;">
+        <span style="display:inline-flex; width:15px; height:15px; flex-shrink:0;">{{ icon('building') }}</span>
+        {%- if lab['building'] or lab['floor'] or lab['room'] -%}
+          {{ [lab['building'], lab['floor'], lab['room']] | select | join(' \u2022 ') }}
+        {%- elif lab['location'] -%}
+          {{ lab['location'] }}
+        {%- else -%}
+          No physical location set yet.
+        {%- endif %}
+      </div>
+      {% if lab['description'] %}<p style="margin:10px 0 0; color:var(--text-muted); font-size:13.5px;">{{ lab['description'] }}</p>{% endif %}
+    </div>
+    <a href="{{ url_for('add_computer') }}" class="btn btn-primary">{{ icon('computer') }} Add Computer Here</a>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:18px;">
+  <div class="stat-card accent-blue">
+    <div class="stat-label">Total computers</div>
+    <div class="stat-value">{{ stats.total }}</div>
+  </div>
+  <div class="stat-card accent-green">
+    <div class="stat-label">Working</div>
+    <div class="stat-value">{{ stats.working }}</div>
+  </div>
+  <div class="stat-card accent-orange">
+    <div class="stat-label">Under repair</div>
+    <div class="stat-value">{{ stats.under_repair }}</div>
+  </div>
+  <div class="stat-card accent-red">
+    <div class="stat-label">Offline</div>
+    <div class="stat-value">{{ stats.offline }}</div>
+  </div>
+</div>
+
+<div class="panel" style="margin-bottom:18px;">
+  <h3>Computers in this laboratory{% if computers %} ({{ computers|length }}){% endif %}</h3>
+  {% if computers %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Computer</th><th>Workstation</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for c in computers %}
+        <tr>
+          <td><strong>{{ c['computer_id'] }}</strong></td>
+          <td>{{ c['number'] }}</td>
+          <td>{{ status_badge(c['status']) }}</td>
+          <td><a href="{{ url_for('computer_detail', computer_id=c['computer_id']) }}" class="btn btn-outline btn-sm">View details</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="color:var(--text-muted);">No computers registered in this laboratory yet.</p>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h3>Open reports in this laboratory {% if open_reports %}<span class="badge badge-open">{{ open_reports|length }} open</span>{% endif %}</h3>
+  {% if open_reports %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Computer</th><th>Issue</th><th>Priority</th><th>Date</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for r in open_reports %}
+        <tr>
+          <td><a href="{{ url_for('computer_detail', computer_id=r['computer_id']) }}">{{ r['computer_id'] }}</a></td>
+          <td>{{ r['issue_type'] }}<div class="pc-meta" style="font-size:12px; color:var(--text-muted);">{{ r['description'] }}</div></td>
+          <td>{{ priority_badge(r['priority']) }}</td>
+          <td>{{ r['date_reported'] }}</td>
+          <td>{{ report_badge(r['status']) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="color:var(--text-muted);">No open reports for computers in this laboratory.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

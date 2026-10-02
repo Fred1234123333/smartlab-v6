@@ -1,0 +1,37 @@
+{% macro status_badge(status) %}
+{%- if status == 'Working' -%}
+<span class="badge badge-working">Working</span>
+{%- elif status == 'Under Repair' -%}
+<span class="badge badge-repair">Under Repair</span>
+{%- elif status == 'Offline' -%}
+<span class="badge badge-offline">Offline</span>
+{%- endif -%}
+{% endmacro %}
+
+{% macro report_badge(status) %}
+{%- if status == 'Open' -%}
+<span class="badge badge-open">Open</span>
+{%- elif status == 'Investigating' -%}
+<span class="badge badge-investigating">Investigating</span>
+{%- elif status == 'Under Repair' -%}
+<span class="badge badge-repair">Under Repair</span>
+{%- else -%}
+<span class="badge badge-resolved">Resolved</span>
+{%- endif -%}
+{% endmacro %}
+
+{% macro priority_badge(priority) %}
+{%- if priority == 'Critical' -%}
+<span class="badge badge-critical">Critical</span>
+{%- elif priority == 'High' -%}
+<span class="badge badge-high">High</span>
+{%- elif priority == 'Low' -%}
+<span class="badge badge-low">Low</span>
+{%- else -%}
+<span class="badge badge-medium">Medium</span>
+{%- endif -%}
+{% endmacro %}
+
+{% macro status_card_class(status) %}
+{%- if status == 'Working' -%}status-working{%- elif status == 'Under Repair' -%}status-repair{%- else -%}status-offline{%- endif -%}
+{% endmacro %}

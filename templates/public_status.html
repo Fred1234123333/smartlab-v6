@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{{ computer['computer_id'] }} — SmartLab</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="public-page">
+  <nav class="public-nav">
+    <div class="brand brand-logo-plain"><img src="{{ url_for('static', filename='img/sfxc_logo_header.png') }}" alt="Saint Francis Xavier College" class="sfxc-crest"><img src="{{ url_for('static', filename='img/logo_full.png') }}" alt="SmartLab"></div>
+  </nav>
+
+  <div class="status-page">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="status-card">
+      <div class="status-computer-id">{{ computer['computer_id'] }}</div>
+      <div class="status-lab">{{ computer['lab'] }} · Workstation {{ computer['number'] }}</div>
+
+      <div class="status-label">Current status</div>
+      {% if computer['status'] == 'Working' %}
+        <div class="status-pill-lg working">Working</div>
+      {% elif computer['status'] == 'Under Repair' %}
+        <div class="status-pill-lg repair">Under Repair</div>
+      {% else %}
+        <div class="status-pill-lg offline">Offline</div>
+      {% endif %}
+      <div class="status-updated">Added {{ computer['date_added'] }}</div>
+    </div>
+
+    <div class="report-section">
+      <h3>Report a problem</h3>
+      <div class="card" style="padding:20px;">
+        <form method="post" action="{{ url_for('submit_report', computer_id=computer['computer_id']) }}" data-smartlab-validate>
+          <div class="form-group">
+            <label for="issue_type">Issue type<span class="required-mark">*</span></label>
+            <select class="form-control" id="issue_type" name="issue_type" required>
+              <option value="" disabled selected>Select an issue</option>
+              {% for issue in issue_types %}
+                <option value="{{ issue }}">{{ issue }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="description">Description (optional)</label>
+            <textarea class="form-control" id="description" name="description" placeholder="Briefly describe what's wrong"></textarea>
+          </div>
+          <div class="form-group">
+            {% if app_settings.allow_anonymous_reports == 'on' %}
+              <label for="reporter">Your name (optional)</label>
+              <input class="form-control" type="text" id="reporter" name="reporter" placeholder="e.g. Juan Dela Cruz">
+            {% else %}
+              <label for="reporter">Your name<span class="required-mark">*</span></label>
+              <input class="form-control" type="text" id="reporter" name="reporter" placeholder="e.g. Juan Dela Cruz" required>
+              <div class="hint">Anonymous reports are turned off for this lab.</div>
+            {% endif %}
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" data-done-btn data-busy-text="Submitting…">Submit report</button>
+        </form>
+      </div>
+    </div>
+
+    {% if recent_reports %}
+    <div class="recent-list">
+      <h3>Recent reports</h3>
+      {% for r in recent_reports %}
+        <div class="recent-item">
+          <div class="ri-top"><span>{{ r['issue_type'] }}</span><span>{{ "Resolved" if r['status'] == "Resolved" else "Open" }}</span></div>
+          <div class="ri-date">{{ r['date_reported'] }}</div>
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <footer class="public-footer">SmartLab — QR-Based Computer Laboratory Monitoring System</footer>
+</div>
+<script src="{{ url_for('static', filename='js/forms.js') }}"></script>
+</body>
+</html>

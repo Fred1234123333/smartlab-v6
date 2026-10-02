@@ -1,0 +1,19 @@
+<div class="smartlab-splash" id="smartlab-splash">
+  <div class="smartlab-splash-inner">
+    <div class="smartlab-splash-logo-card">
+      <img src="{{ url_for('static', filename='img/logo_loading.png') }}" alt="SmartLab">
+    </div>
+    <div class="smartlab-splash-bar"></div>
+  </div>
+</div>
+<script>
+  window.addEventListener("load", function () {
+    setTimeout(function () {
+      var el = document.getElementById("smartlab-splash");
+      if (el) {
+        el.classList.add("hide");
+        setTimeout(function () { el.remove(); }, 500);
+      }
+    }, 900);
+  });
+</script>

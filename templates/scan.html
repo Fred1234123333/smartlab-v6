@@ -1,0 +1,139 @@
+{% extends "base_admin.html" %}
+{% set active = 'scan' %}
+{% block title %}Scan QR{% endblock %}
+{% block page_title %}Scan QR{% endblock %}
+
+{% block content %}
+<div class="scanner-wrap">
+  <p style="color:var(--text-muted); font-size:13.5px; margin-bottom:20px;">
+    Point a camera at a computer's QR code sticker to jump straight to its page — no need to search or type its ID.
+  </p>
+
+  <div class="scanner-viewport" id="scanner-viewport">
+    <video id="scanner-video" playsinline muted></video>
+    <div class="scanner-frame" id="scanner-frame">
+      <div class="scanner-line"></div>
+    </div>
+  </div>
+
+  <div class="scanner-status" id="scanner-status">Requesting camera access…</div>
+
+  <div class="scanner-fallback">
+    <p style="font-size:13px; color:var(--text-muted); margin:0;">No camera, or scanning isn't working? Type the computer's ID instead.</p>
+    <form id="manual-lookup-form" data-smartlab-validate>
+      <input class="form-control" type="text" id="manual-computer-id" name="computer_id" placeholder="e.g. LABA-PC01" required>
+      <button type="submit" class="btn btn-primary" data-done-btn data-busy-text="Opening…">Go</button>
+    </form>
+  </div>
+</div>
+
+<canvas id="scanner-canvas" style="display:none;"></canvas>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/jsQR.js') }}"></script>
+<script>
+(function () {
+  var video = document.getElementById("scanner-video");
+  var canvas = document.getElementById("scanner-canvas");
+  var ctx = canvas.getContext("2d", { willReadFrequently: true });
+  var statusEl = document.getElementById("scanner-status");
+  var frameEl = document.getElementById("scanner-frame");
+  var stream = null;
+  var rafId = null;
+  var done = false;
+
+  function setStatus(text, kind) {
+    statusEl.textContent = text;
+    statusEl.className = "scanner-status" + (kind ? " " + kind : "");
+  }
+
+  function stopCamera() {
+    if (rafId) cancelAnimationFrame(rafId);
+    if (stream) {
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      stream = null;
+    }
+  }
+
+  function extractComputerId(decodedText) {
+    var match = decodedText.match(/\/qr\/([^\/?#]+)/i);
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+
+  function goToComputer(id) {
+    done = true;
+    setStatus("Found " + id + " — opening its page…", "found");
+    stopCamera();
+    frameEl.style.display = "none";
+    setTimeout(function () {
+      window.location.href = "/admin/computers/" + encodeURIComponent(id);
+    }, 550);
+  }
+
+  function tick() {
+    if (done) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var code = null;
+      try {
+        code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
+      } catch (e) { /* keep scanning */ }
+
+      if (code && code.data) {
+        var id = extractComputerId(code.data);
+        if (id) {
+          goToComputer(id);
+          return;
+        } else {
+          setStatus("That QR code isn't a SmartLab computer code. Keep trying…", "error");
+        }
+      } else {
+        setStatus("Point the camera at a computer's QR code");
+      }
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setStatus("This browser doesn't support camera scanning. Use the manual lookup below instead.", "error");
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .catch(function () {
+        // Fall back to any available camera (e.g. a laptop with only a front webcam).
+        return navigator.mediaDevices.getUserMedia({ video: true });
+      })
+      .then(function (s) {
+        stream = s;
+        video.srcObject = stream;
+        video.play();
+        setStatus("Point the camera at a computer's QR code");
+        rafId = requestAnimationFrame(tick);
+      })
+      .catch(function () {
+        setStatus("Camera access was denied or unavailable. Use the manual lookup below instead.", "error");
+      });
+  }
+
+  window.addEventListener("beforeunload", stopCamera);
+  window.addEventListener("pagehide", stopCamera);
+
+  startCamera();
+
+  // ---- Manual fallback lookup ----
+  var manualForm = document.getElementById("manual-lookup-form");
+  manualForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var id = document.getElementById("manual-computer-id").value.trim().toUpperCase();
+    if (!id) return;
+    stopCamera();
+    window.location.href = "/admin/computers/" + encodeURIComponent(id);
+  });
+})();
+</script>
+{% endblock %}

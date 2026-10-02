@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# SmartLab's own data — never commit real database contents or generated
+# QR images; the app recreates both automatically on first run.
+instance/
+static/qrcodes/*.png
+
+# Your real secret key and any other local-only settings.
+# .env.example (the template, with no real values) IS meant to be committed.
+.env
+
+# Editor / OS clutter
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
