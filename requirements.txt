@@ -4,3 +4,4 @@ Flask-Limiter
 qrcode[pil]
 Werkzeug
 gunicorn
+libsql

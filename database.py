@@ -21,6 +21,8 @@ per the project brief): Working / Under Repair / Offline.
 
 import sqlite3
 import os
+
+import turso_db
 from datetime import datetime, timedelta
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -78,10 +80,21 @@ DEFAULT_SETTINGS = {
 }
 
 
+# ---- Turso cloud database (optional) ----
+# When TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are set, data is kept in Turso
+# and this file becomes a synced local copy of it. Without them, SmartLab
+# uses the normal local SQLite file exactly as before.
+if turso_db.is_enabled():
+    DB_PATH = os.path.join(BASE_DIR, "instance", "smartlab-turso.db")
+
+
 def get_connection():
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    if turso_db.is_enabled():
+        conn = turso_db.connect(DB_PATH)
+    else:
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 

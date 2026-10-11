@@ -52,6 +52,32 @@ APP_VERSION = "1.0.0"
 
 db.initialize_database()
 
+# Shows in Render's Logs which storage SmartLab is using, so you can confirm
+# the data is going to Turso and not to a file that Render erases.
+if db.turso_db.is_enabled():
+    print("SmartLab storage: TURSO cloud database (data is kept across restarts)", flush=True)
+else:
+    print("SmartLab storage: LOCAL FILE ONLY - on Render free, data is erased on restart", flush=True)
+
+
+# Free hosts (like Render free) erase saved files when they restart, which
+# deletes the QR code images. The computer records are safe in the database,
+# so on the first visit after each restart, any missing QR image is rebuilt.
+_qr_images_checked = False
+
+
+@app.before_request
+def restore_missing_qr_images():
+    global _qr_images_checked
+    if _qr_images_checked:
+        return
+    _qr_images_checked = True
+    box_size = db.QR_SIZE_OPTIONS.get(db.get_setting("qr_size"), 8)
+    for c in db.get_all_computers():
+        image_path = os.path.join(app.static_folder, c["qr_path"] or "")
+        if not c["qr_path"] or not os.path.exists(image_path):
+            qr_utils.generate_qr(c["computer_id"], request.host_url, box_size=box_size)
+
 
 # ---------------------------------------------------------------------------
 # HELPERS
