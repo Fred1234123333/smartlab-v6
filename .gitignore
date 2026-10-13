@@ -20,3 +20,4 @@ static/qrcodes/*.png
 .idea/
 .DS_Store
 Thumbs.db
+smartlab-qr-monitoring/
